@@ -1,0 +1,10 @@
+#
+######## PyRoots/requirements.txt ########
+#
+#
+numpy
+scipy
+skimage
+matplotlib
+pandas
+math

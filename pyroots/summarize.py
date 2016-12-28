@@ -5,7 +5,7 @@ Created on Thu Aug 11 19:10:25 2016
 @author: pme
 
 Contents:
-- summarize_by_geometry
+- summarize_geometry
 - bin_by_diameter
 """
 
