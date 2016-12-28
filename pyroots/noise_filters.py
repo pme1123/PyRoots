@@ -17,22 +17,27 @@ def noise_removal(img, structure_1="Default", structure_2="Default"):
     """
     Cleans a binary image by separating loosely connected objects, eliminating
     small objects, and finally smoothing edges of the remaining objects. 
-    The method is binary opening, binary closing, and two rounds of a median 
-    filter. Requires scipy.
+    The method is ``binary_opening``, ``binary_closing``, and two rounds of 
+    ``median_filter``. Requires ``scipy``.
     
     Parameters
     ----------
-    img : a boolean ndarray
-    structure : structuring element for filters (boolean ndarray). Default
-        is a 5x5 circular (corners = 0).
+    img : array
+    	a boolean ndarray
+    structure_1 : array
+    	structuring element for opening and closing (boolean ndarray). Default
+        is manhattan distance = 1 (corners = 0).
+    structure_2 : array
+    	structuring element for smoothing with a median filter (boolean ndarray). 
+    	Default is euclidean distance < sqrt(2).
 
     Returns
     -------
-    A boolean ndarray of the same dimensions as img.
+    A boolean ndarray of the same dimensions as ``img``.
     
     See Also
     --------
-    In scipy.ndimage, see binary_opening, binary_closing, and median_filter
+    In ``scipy.ndimage``, see ``binary_opening``, ``binary_closing``, and ``median_filter``
     
     """
 
@@ -62,17 +67,20 @@ def dirt_removal(img, method="gaussian", param=5):
     """
     Removes objects based on size. Uses either a statistical (gaussian)
     cutoff based on the attributes of all objects in the image, or a threshold
-    for minimum area. Requires numpy and scipy.
+    for minimum area. Requires ``numpy`` and ``scipy``.
 
     Parameters
     ---------
-    img : boolean ndarray or binary image
-    method : use statistical filtering based on image parameters? Options are 
-        "gaussian" (default) or "threshold".
-    param : Filtering parameter. For method="gaussian", param defines the number
+    img : array
+    	boolean ndarray or binary image
+    method : str
+    	use statistical filtering based on image parameters? Options are 
+        ``"gaussian"`` (default) or ``"threshold"``.
+    param : float
+    	Filtering parameter. For ``method="gaussian"``, ``param`` defines the number
         of standard deviations larger than the median area as the cutoff, above
-        which objects are considered 'real'. For method="threshold", param 
-        identifies the minimum size in pixels. Default=5
+        which objects are considered 'real'. For ``method="threshold"``, ``param`` 
+        identifies the minimum size in pixels. Default = 5
     
     Returns
     --------

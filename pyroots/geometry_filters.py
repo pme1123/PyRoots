@@ -22,15 +22,19 @@ def _percentile_filter(labels, diameter_image, percentile, value, test_type):
     
     Parameters
     ----------
-    labels : the output of ndimage.label(), which labels image objects in binary
-    images. For skeletons, use maximum distance.
-    diameter_image : skeleton with pixel values as diameter, for example.
-    percentile : the first classification parameter, the percentile of pixel 
-    values at which to make the decision to keep
-    value : the second classification parameter, the threshold at which the
-    classification of an image object switches
-    test_type : Do the percentiles and values indicate minimum thresholds, or
-    maximum thresholds? Options are "ceiling" or "floor".
+    labels : array
+        the output of ``ndimage.label``, which labels image objects in binary
+        images. For skeletons, use maximum distance rather than manhattan.
+    diameter_image : array
+        skeleton image with pixel values as diameter and background as 0, for 
+        example.
+    percentile : float
+        the percentile of pixel values at which to make the decision to keep
+    value : float
+        the threshold at which the classification of an image object switches
+    test_type : str
+        Do the percentiles and values indicate minimum thresholds, or
+        maximum thresholds? Options are "ceiling" or "floor".
     
     Returns
     -------
@@ -38,7 +42,7 @@ def _percentile_filter(labels, diameter_image, percentile, value, test_type):
     
     See Also
     --------
-    numpy.percentile, pyroots.diameter_filter
+    ``numpy.percentile``, ``pyroots.diameter_filter``
     
     """
     
@@ -68,97 +72,113 @@ def _percentile_filter(labels, diameter_image, percentile, value, test_type):
 
 def diameter_filter(diameter_image, length_image, objects_image,
             max_diameter=1000, min_diameter=-1, 
-            max_percentile=100, min_percentile=None):
+            max_percentile=100, min_percentile=None, pixel_level = False):
     """
     Remove objects based on width thresholds. For example, hyphae usually are 
     < 5um diameter, so objects that are mostly >5um are not hyphae, and 
     'objects' that are composits of debris and hyphae will have parts that are
     > 5um. This function removes both. It also provides the option to provide a
-    floor for diameter. Requires scipy.
+    floor for diameter. Requires ``scipy``.
     
     Parameters
     ----------
-    diameter_image : the diameter skeleton array of the thresholded (object) 
-        image, for example pyroots.skeleton_with_distance(binary_image)[1]
-    length_image : the length skeleton array of the thresholded (object) 
-        image, for example pyroots.skeleton_with_distance(binary_image)[0]
-    objects_image : Binary array of objects, for example feeding into 
-        pyroots.skeleton_with_distance.
-    max_percentile : Of all of the skeleton pixels for a single object, if the 
-        ceiling is smaller than the percentile, the entire object is deleted. 
-        Feeds into numpy.percentile(). Default=100 (effectively no filter).
-    max_diameter : Cutoff, where true objects have a narrower (exclusive) 
-        diameter. In pixels. Default=1000 (effectively no filter).
-    min_percentile : Of all of the skeleton pixels for a single object, if the 
-        floor is larger than the percentile, the entire object is deleted. 
-        Feeds into numpy.percentile(). Default=None.
-    min_diameter : Cutoff, where true objects have a wider (exclusive) diameter. 
-        In pixels. Default=-1 (for no filtering).
+    diameter_image : array
+        the diameter skeleton array of the thresholded (object) image, for example
+        ``pyroots.skeleton_with_distance(binary_image)[1]``
+    length_image : array
+        the length skeleton array of the thresholded (object)image, for example
+        ``pyroots.skeleton_with_distance(binary_image)[0]``
+    objects_image : array
+        Binary array of objects, for example feeding into 
+        ``pyroots.skeleton_with_distance``.
+    max_percentile : float
+        Of all of the skeleton pixels for a single object, if the ceiling is smaller 
+        than the percentile, the entire object is deleted. Feeds into 
+        ``numpy.percentile``. Default=100 (effectively no filter).
+    max_diameter : float
+        Cutoff, where true objects have a narrower (exclusive) diameter. In pixels.
+        Default=1000 (effectively no filter).
+    min_percentile : float
+        Of all of the skeleton pixels for a single object, if the floor is larger 
+        than the percentile, the entire object is deleted. Feeds into 
+        ``numpy.percentile``. Default=``None``.
+    min_diameter : float
+        Cutoff, where true objects have a wider (exclusive) diameter. In pixels. 
+        Default=-1 (for no filtering).
+    pixel_level : bool
+        If true, will remove individual pixels with values > ''max_diameter'' and 
+        < ''min_diameter''. 
     
     Returns
     -------
     A list of four objects:
-    1. A pandas dataframe of updated mean diameter and total length (in 
+    * An updated list of image objects
+    * A filtered skeleton array of pixel diameter 
+    * A filtered skeleton array of pixel length 
+    * A pandas dataframe of updated mean diameter and total length (in 
         pixels) of each object. 
-    2. A filtered skeleton array of pixel diameter 
-    3. A filtered skeleton array of pixel length 
-    4. An updated list of image objects
     
     See Also
     --------
-    pyroots._percentile_filter, scipy.ndimage.label, pandas
+    ``pyroots._percentile_filter``, ``scipy.ndimage.label``, ``pandas``
     
     """    
-#    from pyroots import _percentile_filter
-    
+
     # make sure diameter, length skeletons match objects image
     diameter_image = diameter_image * objects_image
     length_image = length_image * objects_image
     
     #Label objects for indexing
-    labels, labels_ls= ndimage.label(diameter_image>0,
-               structure = np.ones((3,3)))
+    labels, labels_ls= ndimage.label(diameter_image > 0,
+                                     structure = np.ones((3,3))) #square for skeletons
       
-    #Percentile filters              
+    ####  Percentile filters  ####              
     max_perc_filter = _percentile_filter(labels, diameter_image, 
                                          max_percentile, max_diameter,
                                          'ceiling')
                     
-    if min_percentile != None:
+    if min_percentile is not None:
         min_perc_filter = _percentile_filter(labels, diameter_image,
                                              min_percentile, min_diameter, 
                                              'floor')
         perc_filter = max_perc_filter * min_perc_filter
+    
     else:
         perc_filter = max_perc_filter
     
-    # Max, min diameter filter
-    max_diam_filter = diameter_image < max_diameter
-    min_diam_filter = diameter_image > min_diameter
+    ##### Max, min diameter filter ####
+    if pixel_level is True:
+        max_diam_filter = diameter_image < max_diameter
+        min_diam_filter = diameter_image > min_diameter
+        diam_filter = max_diam_filter * min_diam_filter * perc_filter
+    else:
+        diam_filter = perc_filter
     
-    diam_filter = max_diam_filter * min_diam_filter * perc_filter
-    
+    #### Update the skeletons ####
     new_diam_skeleton = diameter_image * diam_filter
     new_len_skeleton = length_image * diam_filter
     new_labels = labels * diam_filter
     
     # Re-calculate geometry
     width_list = ndimage.mean(new_diam_skeleton, 
-                  new_labels, 
-                  index=range(new_labels.max()+1)) 
+                              new_labels, 
+                              index=range(new_labels.max()+1)) 
     len_list = ndimage.sum(new_len_skeleton,
-               new_labels,
-               index = range(new_labels.max()+1))
+                           new_labels,
+                           index=range(new_labels.max()+1))
     
+    # Create a new geometry dataframe
     geom_out = pd.DataFrame({'Length' : len_list,
                              'Diameter' : width_list
                              })
-    geom_out = geom_out.drop([0])
+    geom_out = geom_out[geom_out['Diameter'].notnull()]  # subset only kept objects
     
-    labels, labels_ls = ndimage.label(objects_image)
-    new_objects = np.in1d(labels, np.unique(new_labels))
+    #### update the objects ###
+    labels, labels_ls = ndimage.label(objects_image) # make labels or original objects
+    new_objects = np.in1d(labels, np.unique(new_labels)) # only keep labels that were kept
     new_objects = np.reshape(new_objects, new_labels.shape) * labels
-    return(new_objects, geom_out, new_diam_skeleton, new_len_skeleton)
+    
+    return(new_objects, new_diam_skeleton, new_len_skeleton, geom_out)
     
 def length_width_filter(binary_image, geometry, threshold=5):
     """
@@ -166,9 +186,12 @@ def length_width_filter(binary_image, geometry, threshold=5):
     
     Parameters
     ----------
-    binary_image : a in input binary image
-    geometry : n*2 array of geometry for each object. 
-    threshold : Minimum length:width ratio to keep an object. Default = 5.
+    binary_image : array
+        In input binary image
+    geometry : array
+        n*2 array of geometry for each object, or pandas ``DataFrame``
+    threshold : float
+        Minimum length:width ratio to keep an object. Default = 5.
     
     Returns
     -------
@@ -204,4 +227,5 @@ def length_width_filter(binary_image, geometry, threshold=5):
     geom_out = pd.DataFrame({'Length' : geom_out[1],
                              'Diameter' : geom_out[0]
                              })
+    
     return(out, geom_out)

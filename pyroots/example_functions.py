@@ -47,8 +47,8 @@ def pyroots_analysis(image, image_name, colorspace, analysis_bands,
     threshold_params : Options for adaptive thresholding. See 
         skimage.filters.threshold_adaptive(). Dictionary. 
     mask_params : List of two dictionaries:
-    	1. A boolean of what type of mask to use
-    	2. A list of numbers specifying the shape of the mask.
+        1. A boolean of what type of mask to use
+        2. A list of numbers specifying the shape of the mask.
     filtering_params : List of two dictionaries:
         1. A size filter threshold for passing to pyroots.dirt_removal(), and a
             length:width value for passing to pyroots.length_width_filter().
@@ -140,19 +140,19 @@ def pyroots_analysis(image, image_name, colorspace, analysis_bands,
         
     else:
         diam_out, summary_df = pr.bin_by_diameter(length_img,
-                                                   diameter_img,
-                                                   diameter_bins)
-        summary_df.insert(0, "ImageName", image_name, allow_duplicates=True)
+                                                  diameter_img,
+                                                  diameter_bins,
+                                                  image_name)
     
     ################################################################
     #### Draw images for setting parameters and troubleshooting ####
     ################################################################
     if optimize is True:
         pr.multi_image_plot([image, bands[0], bands[1], bands[2]],
-                         	["Input", "Band 1", "Band 2", "Band 3"])
+                             ["Input", "Band 1", "Band 2", "Band 3"])
         pr.multi_image_plot([threshold, no_dirt, raw_objects, lw_objects],
-                         	["Threshold", "Small Objects Removal", "Smoothing",
-                             "Length Width Filter"])
+                             ["Threshold", "Small Objects Removal", "Smoothing",
+                              "Length Width Filter"])
         pr.multi_image_plot([objects_img, diameter_img, length_img],
                              ["Diameter Filter", "Diameter Skeleton",
                               "Length Skeleton"])

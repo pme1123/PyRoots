@@ -25,14 +25,20 @@ def _axis_length(image, labels=None, random=True, m=0.5):
 	
 	Parameters
 	----------
-	image : skeletonized array. Binary image (required)
-	labels : array of object labels. Integer values, for example from 
-	ndimage.label(). Default=None
-	random : boolean. Are the segments randomly oriented, or are they well 
-	ordered? Default=True. 
-	m : float [0,1]. For random=False, otherwise the algorithm will 
-	underestimate length. Default=0.5 This should work for most situations. 
-	See [1]. 
+	image : array
+		skeletonized array. Binary image (required)
+	labels : array 
+		Array of object labels. Integer values, for example from 
+		``ndimage.label``. Default=None, which returns a single length 
+		value for all objects in the image. If labels are given, then the
+		total length of each object is returned.
+	random : bool
+		Are the segments randomly oriented, or are they well ordered? 
+		Default=``True``. 
+	m : float
+		Withn range [0,1]. Change if random=``False``, otherwise the algorithm
+		will underestimate length (slightly). Default=0.5 This should work for 
+		most situations. See [1]. 
 		
 		
 	Returns
@@ -156,23 +162,28 @@ def skeleton_with_distance(img, random=True, m=0.5):
 	
 	@author: pme
 
-	Calls morphology.medial_axis(), then calculates the length of each axis.
+	Calls ``morphology.medial_axis``, then calculates the length of each axis.
 
 	Parameters
 	--------
-	img: boolean ndarray
-	random: Are the segments randomly oriented? Boolean, default = True. 
-		See source code for pyroots.axis_length. 
-	m: Pamameter for pyroots.axis_length. Default = 0.5. See source code.
+	img: array
+		boolean ndarray of objects
+	random: boolean
+		Are the segments randomly oriented? Default=``True``. 
+		Feeds ``pyroots.axis_length``. 
+	m: float
+		range [0,1]. Feeds ``pyroots.axis_length``. Default = 0.5. Change only
+		if random=``False``.
 
 	Returns
 	--------
 	A list containing:
-		An ndarray of length for each pixel
-		An ndarray of diameter at each pixel
-		A list of vectors (mean length, diameter) for each object. The 
-			first index is open space and therefore 0 (for consistency with 
-			ndimage.label() behavior). 
+	1. An ndarray of length for each pixel
+	2. An ndarray of diameter at each pixel
+	3. A list of vectors (mean length, diameter) for each object. The 
+		first index is open space and therefore 0 (for consistency with 
+		ndimage.label() behavior). 
+		
 	"""
 	
 	labels, labels_ls = ndimage.label(img)

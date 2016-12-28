@@ -19,12 +19,13 @@ def img_split(img):
 	
 	Parameters
 	----------
-	img : a 3- or 4-band image or array
+	img : array
+		A 3- or 4-band image or array
 
 	Returns
 	-------
 	Returns a list where each section is a separate band
-	in the array. ex. RGB img return [R, G, B].
+	in the array. ex. RGB image returns [R, G, B].
 
 	"""
 	bands = img.shape[2]
@@ -42,12 +43,16 @@ def img_split(img):
 
 def circle_mask(img, param=None):
 	"""
-	Create a circular mask to define the center circle of an image
+	Create an elliptical mask to limit analysis to the center of an image.
+	Useful for microscope images that are blurry at the edges, for example.
 
 	Parameters
 	----------
-	img : an ndarray
-	param : list of x and y dimensions of the circle (optional)
+	img : array
+		image upon which to draw the mask
+	param : int
+		list of x and y dimensions of the ellipse. Defaults to an ellipse
+		spanning the image.
 
 	Returns
 	-------
@@ -57,7 +62,7 @@ def circle_mask(img, param=None):
 
 	if param is None:
 		param_x = img.shape[0]//2
-		param_y = param_x
+		param_y = img.shape[1]//2
 	else:
 		param_x, param_y = param[0:1]
 
@@ -65,5 +70,5 @@ def circle_mask(img, param=None):
    
 	x, y = np.ogrid[-param_x:param_x, -param_y:param_y] #makes an open grid of 
 	mask = x**2 + y**2 >= param_x**2 #>= removes the outside edges. 
-		
+	
 	return(~mask)

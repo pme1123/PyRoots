@@ -25,14 +25,17 @@ def summarize_geometry(pyroots_geom, image_name):
     
     Parameters
     ----------
-    pyroots_geom : output geometry pandas.DataFrame from pyroots functions. 
-        Columns denote length or diameter. Rows index objects within an image.
-    image_name : the name used to identify this image uniquely. Usually the file
+    pyroots_geom : DataFrame
+    	Geometry ``pandas.DataFrame`` from pyroots functions such as 
+    	``skeleton_with_distance``. Columns denote length or diameter. Rows 
+    	index objects within an image.
+    image_name : str
+    	The name used to identify this image uniquely. Usually the file
         name.
     
     Returns
     -------
-    A pandas DataFrame with obvious column headings
+    A ``pandas.DataFrame`` with obvious column headings
     
     See Also
     --------
@@ -54,24 +57,30 @@ def summarize_geometry(pyroots_geom, image_name):
     return(summary_df)
 
 
-def bin_by_diameter(length_skeleton, diameter_skeleton, breakpoints):
+def bin_by_diameter(length_skeleton, diameter_skeleton, breakpoints, image_name=None):
     """
     Bin objects into diameter classes and calculate the total length of each
     class.
     
     Parameters
     -----
-    length_skeleton : non-binary medial axis array showing the length value
-    of each pixel in the skeleton along the axis
-    diameter_skeleton : non-binary medial axis array showing the diameter value
-    of each pixel in the skeleton across the axis
-    breakpoints : a list of break points for binning diameter classes, in pixels
+    length_skeleton : array
+    	non-binary medial axis array showing the length value of each pixel in 
+    	the skeleton along the axis
+    diameter_skeleton : array
+    	non-binary medial axis array showing the diameter value of each pixel in 
+    	the skeleton across the axis
+    breakpoints : float
+    	a list of break points for binning diameter classes, in pixels
+	image_name : str
+		Name for the image being summarized. If ``None`` (default), will not add
+		a column to the output dataframe.
     
     Returns
     -------
     A list containing:
-    **1)** A data array of length by bin class
-    **2)** An image array visualizing the class of each pixel of the medial axis
+    	**1)** A data array of length by bin class
+    	**2)** An image array visualizing the class of each pixel of the medial axis
     
     """
     diameter_skeleton = diameter_skeleton.astype('int64')    
@@ -103,5 +112,8 @@ def bin_by_diameter(length_skeleton, diameter_skeleton, breakpoints):
         "DiameterClass" : breakpoints,
         "Length" : bins_length
         })  
-            
+    
+    if image_name is not None:
+    	bins_length_out.insert(0, "ImageName", image_name, allow_duplicates=True)  
+          
     return(bins_reclass, bins_length_out)
