@@ -10,6 +10,8 @@ Contents:
 
 """
 
+import numpy as np
+
 def img_split(img):
 
 	"""
@@ -57,11 +59,11 @@ def circle_mask(img, param=None):
 		param_x = img.shape[0]//2
 		param_y = param_x
 	else:
-		param_x, param_y = param[0:2]
+		param_x, param_y = param[0:1]
 
 	dim_x, dim_y = img.shape[0]//2, img.shape[1]//2	   
    
 	x, y = np.ogrid[-param_x:param_x, -param_y:param_y] #makes an open grid of 
 	mask = x**2 + y**2 >= param_x**2 #>= removes the outside edges. 
 		
-	return(mask)
+	return(~mask)
