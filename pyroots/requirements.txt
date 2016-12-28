@@ -7,4 +7,5 @@ scipy
 skimage
 matplotlib
 pandas
-math
+PIL
+os
