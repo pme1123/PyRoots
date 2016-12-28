@@ -14,9 +14,9 @@ import numpy as np
 
 
 def noise_removal(img, structure_1="Default", structure_2="Default"):
-	"""
-	Cleans a binary image by separating loosely connected objects, eliminating
-	small objects, and finally smoothing edges of the remaining objects. 
+    """
+    Cleans a binary image by separating loosely connected objects, eliminating
+    small objects, and finally smoothing edges of the remaining objects. 
     The method is binary opening, binary closing, and two rounds of a median 
     filter. Requires scipy.
     
@@ -38,17 +38,17 @@ def noise_removal(img, structure_1="Default", structure_2="Default"):
 
     if structure_1 is "Default":
         ELEMENT_1 = [[0,1,0],
-                 [1,1,1],
-                 [0,1,0]]
+                     [1,1,1],
+                     [0,1,0]]
     else:
         ELEMENT_1 = structure_1
     
     if structure_2 is "Default":
         ELEMENT_2 = [[0,1,1,1,0],
-                 [1,1,1,1,1],
-                 [1,1,1,1,1],
-                 [1,1,1,1,1],
-                 [0,1,1,1,0]]
+                     [1,1,1,1,1],
+                     [1,1,1,1,1],
+                     [1,1,1,1,1],
+                     [0,1,1,1,0]]
     else:
         ELEMENT_2 = structure_2
         
@@ -72,7 +72,7 @@ def dirt_removal(img, method="gaussian", param=5):
     param : Filtering parameter. For method="gaussian", param defines the number
         of standard deviations larger than the median area as the cutoff, above
         which objects are considered 'real'. For method="threshold", param 
-    	identifies the minimum size in pixels. Default=5
+        identifies the minimum size in pixels. Default=5
     
     Returns
     --------
@@ -87,7 +87,7 @@ def dirt_removal(img, method="gaussian", param=5):
     elif method is "threshold":
         area_filt = area > param
     else:
-    	print("method should be 'gaussian' or 'threshold'!")
+        print("method should be 'gaussian' or 'threshold'!")
     
     keep_ID = [i for i, x in enumerate(area_filt) if x == True] #Select labels of 'real' objects
     filt = np.in1d(labels, keep_ID) #reshape to image size

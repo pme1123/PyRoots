@@ -5,7 +5,7 @@ Created 08/12/2016
 
 Contents:
 - pyroots_analysis
-- multi_image_loop
+- image_loop
 
 TODO: Test multi_image_loop
 """
@@ -16,8 +16,9 @@ import pandas as pd
 import pyroots as pr
 from skimage import io, color, filters
 
-def pyroots_analysis(image, image_name, colorspace, analysis_bands, light_on_dark = False,
-                     threshold_params, mask_params, filtering_params, diameter_bins = None,
+def pyroots_analysis(image, image_name, colorspace, analysis_bands,
+                     threshold_params, mask_params, filtering_params, 
+                     light_on_dark = False, diameter_bins = None,
                      optimize = False):
     """
     Full analysis of an image for length of objects based on thresholding. 
@@ -194,13 +195,13 @@ def image_loop(root_directory, image_extension, full_path_to_params, save_images
                 temp_df, objects, length_skel, dist_skel = pr.pyroots_analysis(
                     image = img,
                     image_name = filepath,
-                    colorspace,
-                    light_on_dark,
-                    analysis_bands,
-                    threshold_params,
-                    mask_params,
-                    filtering_params,
-                    diameter_bins,
+                    colorspace = colorspace,
+                    analysis_bands = analysis_bands,
+                    threshold_params = threshold_params,
+                    mask_params = mask_params,
+                    filtering_params = filtering_params,
+                    light_on_dark = light_on_dark,
+                    diameter_bins = diameter_bins,
                     optimize = False
                 )
                 
