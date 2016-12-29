@@ -8,10 +8,8 @@ Test core functions in pyroots. Return a
 """
 
 import pyroots as pr
-from skimage import io
+from skimage import io, filters
 from matplotlib import pyplot
-
-importlib.reload(pr)
 
 dir_in = "/home/patrick/Cloud/Codes/pyroots/pyroots/sample_images/"
 file_in = "hyphae_500x500.tif"
@@ -48,27 +46,26 @@ noise = pr.noise_removal(dirt)
 #pyplot.imshow(noise, cmap = 'gray')
 
 #### skeleton ####
-length_raw, dist_raw, geom_raw = pr.skeleton_with_distance(noise)
-#pr.multi_image_plot([length_raw, dist_raw], ['length', 'diam'], 
-#                    color_map = "spectral")
+skel_dict = pr.skeleton_with_distance(noise)
+#pr.multi_image_plot([skel_dict['diameter'], skel_dict['length'], skel_dict['objects']],
+#                    ['diam', 'length', 'objects'], color_map = "spectral")
 
-diamfilt, dist_diamfilt, length_diamfilt, geom_diamfilt = pr.diameter_filter(dist_raw, length_raw, noise, max_diameter=8, max_percentile=80)
-#pr.multi_image_plot([diamfilt, dist_diamfilt, length_diamfilt], 
-#                    ['obj','diameter','length'], 
-#                    color_map = "spectral")
-#geom_diamfilt
+diam_dict = pr.diameter_filter(skel_dict, max_diameter=8, max_percentile=80)
+#pr.multi_image_plot([diam_dict['diameter'], diam_dict['length'], diam_dict['objects']],
+#                    ['diam', 'length', 'objects'], color_map = "spectral")
+#diam_dict["geometry"]
 
-diamfilt1, dist_diamfilt1, length_diamfilt1, geom_diamfilt1 = pr.diameter_filter(dist_raw, length_raw, noise, min_diameter=8, min_percentile=80)
-#pr.multi_image_plot([diamfilt1, dist_diamfilt1, length_diamfilt1], 
-#                    ['obj','diameter','length'], 
-#                    color_map = "spectral")
+diam_dict1 = pr.diameter_filter(skel_dict, min_diameter=8, min_percentile=80)
+#pr.multi_image_plot([diam_dict1['diameter'], diam_dict1['length'], diam_dict1['objects']],
+#                    ['diam', 'length', 'objects'], color_map = "spectral")
+#diam_dict1["geometry"]
 
-lwf, geom_lwf = pr.length_width_filter(diamfilt, geom_diamfilt)
+lw_dict = pr.length_width_filter(skel_dict)
 
-geom_sum = pr.summarize_geometry(geom_lwf, "helloooo")
+geom_sum = pr.summarize_geometry(lw_dict['geometry'], "helloooo")
 #geom_sum
 
-binned_medial, binned_geom = pr.bin_by_diameter(length_diamfilt, dist_diamfilt, [2,4,6], "Helloo")
+binned_medial, binned_geom = pr.bin_by_diameter(lw_dict['length'], lw_dict['diameter'], [2,4,6], "Helloo")
 #binned_geom
 #pyplot.imshow(binned_medial, cmap = "spectral")
 

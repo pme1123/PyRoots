@@ -17,9 +17,9 @@ import pyroots as pr
 from skimage import io, color, filters
 
 def pyroots_analysis(image, image_name, colorspace, analysis_bands,
-                     threshold_params, mask_params, filtering_params, 
-                     light_on_dark = False, diameter_bins = None,
-                     optimize = False):
+                     threshold_params, filtering_params, 
+                     light_on_dark = False, mask = None, 
+                     diameter_bins = None, optimize = False):
     """
     Full analysis of an image for length of objects based on thresholding. 
     Performs the following steps:
@@ -38,25 +38,34 @@ def pyroots_analysis(image, image_name, colorspace, analysis_bands,
     
     Parameters
     ----------
-    image : An RGB image for analysis
-    image_name : What do you want to call your image?
-    colorspace : The colorspace to run the analysis in (ex. RGB, LAB, HSV). String.
-    analysis_bands : A list of bands in the colorspace to threshold. ex for HSV, 
-        "H" = 0, "S" = 1, "V" = 2. List of integers.
+    image : array
+    	An RGB image for analysis
+    image_name : str
+    	What do you want to call your image?
+    colorspace : str
+    	The colorspace to run the analysis in (ex. RGB, LAB, HSV). String.
+    analysis_bands : list
+    	Integers describing indicies of bands in the colorspace to threshold. 
+    	ex for HSV, "H" = 0, "S" = 1, "V" = 2. Recommend choosing one band, 
+    	otherwise modify this script. 
     light_on_dark : Are the objects dark objects on a light background? Default = False.
     threshold_params : Options for adaptive thresholding. See 
         skimage.filters.threshold_adaptive(). Dictionary. 
-    mask_params : List of two dictionaries:
-        1. A boolean of what type of mask to use
-        2. A list of numbers specifying the shape of the mask.
-    filtering_params : List of two dictionaries:
-        1. A size filter threshold for passing to pyroots.dirt_removal(), and a
+    mask : array
+    	If want to analyze only part of an image, use a binary array such as
+    	made with ``pyroots.circle_mask``. 
+    filtering_params : List 
+    	Contains two two dictionaries:
+        	1. A size filter threshold for passing to pyroots.dirt_removal(), and a
             length:width value for passing to pyroots.length_width_filter().
-        2. Arguments for passing to pyroots.diameter_filter().
-    diameter_bins : List of bin cutoffs for summarizing object length by diameter
-        class. Default = None.
-    optimize : Flag for whether to run the function in a more 'interactive' mode.
-        This causes the function to print images at each step, for the purpose
+        	2. Arguments for passing to pyroots.diameter_filter().
+    diameter_bins : List
+    	Float bin cutoffs for summarizing object length by diameter class. 
+    	Defaults to ``None``, which returns total length and average diameter for
+    	all objects in the image.
+    optimize : Bool
+    	Flag for whether to run the function in a more 'interactive' mode.
+        This causes the function to produce images at each step, for the purpose
         of tweaking parameters. Default = False.
     
     Returns
@@ -93,6 +102,8 @@ def pyroots_analysis(image, image_name, colorspace, analysis_bands,
     #### Insert equation here for combining binary threshold ####
     ####              images of multiple bands               ####
     #############################################################
+    if len(analysis_bands) is not 1:  # comment this out if using multiple bands
+    	raise ValueError("Make sure you identify how to combine these bands")
 #    threshold = threshold[1] * threshold[2]  # both g and b of rgb colorspace
     
     # ensure the image is an array and not a list
@@ -103,44 +114,42 @@ def pyroots_analysis(image, image_name, colorspace, analysis_bands,
     ####                   of the image?                      ####
     ##############################################################
         
-    if mask[0]['form'] is "ellipse":
-        img_mask = pr.circle_mask(threshold, **mask[1])
-    threshold = threshold * img_mask  # apply the mask
+#    if mask[0]['form'] is "ellipse":
+#        img_mask = pr.circle_mask(threshold, **mask[1])
+#    threshold = threshold * img_mask  # apply the mask
+    
+    if mask is not None:
+    	threshold = threshold * mask
     
     ##############################################################
     ####  Remove noise, smooth, and clear extraneous objects  ####
     ##############################################################
     no_dirt = pr.dirt_removal(threshold, **filtering_params[0])
     
-    raw_objects = pr.noise_removal(no_dirt, 
-                                **filtering_params[1])  # can change the stringency of noise
-        # noise removal and smoothing by specifying different structure elements
+    raw_objects = pr.noise_removal(no_dirt, **filtering_params[1])  
+        # can change the stringency
+        # of noise removal and smoothing by specifying different structure elements
         # see source code (%psource pyroots.noise_removal in ipython)
     
     # medial axis skeleton plus geometry calculations
-    raw_length, raw_diam, raw_geom = pr.skeleton_with_distance(raw_objects)
+    skel_dict = pr.skeleton_with_distance(raw_objects)
     
     # filter objects by length:width ratio, and update objects
-    lw_objects, lw_geom = pr.length_width_filter(raw_objects,
-                                                 raw_geom,
-                                                 **filtering_params[2])
+    lw_dict = pr.length_width_filter(skel_dict, **filtering_params[2])
     
     # filter by diameter
-    objects_img, geom, diameter_img, length_img = pr.diameter_filter(raw_diam, 
-                                                                  raw_length, 
-                                                                  lw_objects,
-                                                                  **filtering_params[3])
+    diam_dict = pr.diameter_filter(lw_dict, **filtering_params[3])
 
     ##############################################################
     #### Summarize the length and diameter data for the image ####
     ##############################################################
    
     if diameter_bins is None:
-        summary_df = pr.summarize_geometry(geom, image_name)
+        summary_df = pr.summarize_geometry(diam_dict['geometry'], image_name)
         
     else:
-        diam_out, summary_df = pr.bin_by_diameter(length_img,
-                                                  diameter_img,
+        diam_out, summary_df = pr.bin_by_diameter(diam_dict['length'],
+                                                  diam_dict['diameter'],
                                                   diameter_bins,
                                                   image_name)
     
@@ -150,10 +159,10 @@ def pyroots_analysis(image, image_name, colorspace, analysis_bands,
     if optimize is True:
         pr.multi_image_plot([image, bands[0], bands[1], bands[2]],
                              ["Input", "Band 1", "Band 2", "Band 3"])
-        pr.multi_image_plot([threshold, no_dirt, raw_objects, lw_objects],
+        pr.multi_image_plot([threshold, no_dirt, raw_objects, lw_dict['objects']],
                              ["Threshold", "Small Objects Removal", "Smoothing",
                               "Length Width Filter"])
-        pr.multi_image_plot([objects_img, diameter_img, length_img],
+        pr.multi_image_plot([diam_dict['objects'], diam_dict['diameter'], diam_dict['length']],
                              ["Diameter Filter", "Diameter Skeleton",
                               "Length Skeleton"])
         return(summary_df)
