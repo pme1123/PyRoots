@@ -168,21 +168,21 @@ def pyroots_analysis(image, image_name, colorspace, analysis_bands,
         return(summary_df)
     
     else:
-        return(summary_df, objects_img, length_img, diameter_img)
+        return(summary_df, diam_dict['objects'], diam_dict['length'], diam_dict['diameter'])
 
-def image_loop(root_directory, image_extension, full_path_to_params, save_images = False):
+def image_loop(root_directory, image_extension, path_to_params, mask=None, save_images=False):
     """
     Reference function to loop through images in a directory. As it is written, it returns
     a dataframe from "pyroots_analysis" and also writes images showing the objects analyzed.
     """
-    source(path_to_params) 
+    exec(open(path_to_params).read())
     #Make an output directory for the analyzed images and data. Requires os.
     if save_images is True:
         if not os.path.exists(root_directory + os.sep + "Pyroots Analyzed"):
             os.mkdir(root_directory + os.sep + "Pyroots Analyzed")
     
     #Make a placeholder DataFrame for the output data. Requires pandas.
-    if params_dict['diameter_bins'] is None:
+    if diameter_bins is None:
         img_df = pd.DataFrame(columns=("ImageName", "Length", "NObjects", "MeanDiam"))    
     else:
         img_df = pd.DataFrame(columns=("ImageName", "DiameterClass", "Length"))
@@ -203,11 +203,11 @@ def image_loop(root_directory, image_extension, full_path_to_params, save_images
                 #Run through the analysis. Requires pyroots.pyroots_analysis reference function.
                 temp_df, objects, length_skel, dist_skel = pr.pyroots_analysis(
                     image = img,
-                    image_name = filepath,
+                    image_name = file_in,
                     colorspace = colorspace,
                     analysis_bands = analysis_bands,
                     threshold_params = threshold_params,
-                    mask_params = mask_params,
+                    mask = mask,
                     filtering_params = filtering_params,
                     light_on_dark = light_on_dark,
                     diameter_bins = diameter_bins,

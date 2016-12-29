@@ -29,10 +29,6 @@ light_on_dark = False
 # which bands of the colorspace do you want? ex. in RGB, R = 0, G = 1, B = 2.
 analysis_bands = [2]  # If you want to use more than one band, edit the source code to identify how to combine them into a single, binary image.
 
-# Do you want to analyze a consistent part of the image?
-mask_params = [{'form' : 'ellipse'},  # What ort of mask? Options include: None, 'ellipse'
-        	   {'param' : None}]      # List of length = 2 showing the major and minor axes of the ellipse, or None to center a circle.
-
 # skimage.filters.threshold_adaptive(). Works on individual analysis bands.
 threshold_params = {'block_size' : 191,          # Length of square sides to use as a thresholding neighborhood. Must be odd. 
                     'offset'     : 5,            # Add this value to param to set as threshold. Larger is more stringent. 
