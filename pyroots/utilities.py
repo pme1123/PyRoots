@@ -6,11 +6,16 @@ Created on Fri May  6 11:24:24 2016
 Contents:
 multi_image_plot
 random_blobs
+tiff_splitter
 """
 
 from matplotlib import pyplot as plt
 from scipy import ndimage
 import numpy as np
+
+# for tiff splitter
+from skimage import io
+import os
 
 def multi_image_plot(images, titles, 
 					 color_map="gray", axis="off", 
@@ -83,7 +88,6 @@ def random_blobs(n=100, dims=256, seed=1, size=0.25, noise=True):
 	
 	"""
 
-
 	im = np.zeros((dims, dims))
 	np.random.seed(seed)
 	points = (dims * np.random.random((2, n))).astype(np.int) #blob locations
@@ -99,3 +103,42 @@ def random_blobs(n=100, dims=256, seed=1, size=0.25, noise=True):
 	else:
 		img = mask
 	return img
+	
+
+def tiff_splitter(directory_in, extension = ".tif"):
+    """
+    Silly function to load a tiff file and resave it. This is critical if the
+    tiff is a multi-page tiff and you want to pre-process it with GIMP, for
+    example. 
+    
+    Parameters
+    ----------
+    directory_in : str
+        Directory where the images are
+    extension : str
+        Image extension. Defaults to ```".tif"```, but could be anything.
+        
+    Returns
+    -------
+    Creates a directory called "split_images" in ```directory_in``` that has
+    copies of the same images, but without thumbnails.
+    
+    """
+    directory_out = directory_in + os.sep + "split_images"
+    if not os.path.exists(directory_out):
+        os.mkdir(directory_out)
+    
+    for subdir, dirs, files in os.walk(directory_in):
+
+        for file_in in files:
+            
+            #criteria for doing something
+            if file_in.endswith(image_extension):
+                path_in = subdir + os.sep + file_in  # what's the image called and where is it?
+                path_out = directory_out + subdir[len(directory_out):] + os.sep + file_in
+                
+                #Import and export image
+                io.imsave(path_out, io.imread(path_in))
+    return("Done")
+
+tiff_splitter(directory_in, ".tif")
