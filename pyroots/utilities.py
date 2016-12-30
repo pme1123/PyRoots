@@ -140,5 +140,3 @@ def tiff_splitter(directory_in, extension = ".tif"):
                 #Import and export image
                 io.imsave(path_out, io.imread(path_in))
     return("Done")
-
-tiff_splitter(directory_in, ".tif")
