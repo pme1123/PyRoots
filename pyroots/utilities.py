@@ -16,6 +16,7 @@ import numpy as np
 # for tiff splitter
 from skimage import io
 import os
+from multiprocessing.dummy import Pool
 
 def multi_image_plot(images, titles, 
 					 color_map="gray", axis="off", 
@@ -105,11 +106,12 @@ def random_blobs(n=100, dims=256, seed=1, size=0.25, noise=True):
 	return img
 	
 
-def tiff_splitter(directory_in, extension = ".tif"):
+def tiff_splitter(directory_in, extension=".tif", threads=1):
     """
     Silly function to load a tiff file and resave it. This is critical if the
-    tiff is a multi-page tiff and you want to pre-process it with GIMP, for
-    example. 
+    tiff is a multi-page tiff (ex. images, thumbnails) and you want to
+    pre-process it with GIMP, for example. The output is the first page of the 
+    tiff.
     
     Parameters
     ----------
@@ -117,6 +119,8 @@ def tiff_splitter(directory_in, extension = ".tif"):
         Directory where the images are
     extension : str
         Image extension. Defaults to ```".tif"```, but could be anything.
+    threads : int
+        For multithreading. This can be a stupidly slow function.
         
     Returns
     -------
@@ -124,19 +128,43 @@ def tiff_splitter(directory_in, extension = ".tif"):
     copies of the same images, but without thumbnails.
     
     """
+    
+    #core function to map across threads
+    def _load_unload_image(file_in):
+            
+        if file_in.endswith(extension):                   
+            path_in = subdir + os.sep + file_in  # what's the image called and where is it?
+            path_out = directory_out + sub_path + os.sep + file_in
+                
+            #Import and export image
+            io.imsave(path_out, io.imread(path_in))
+            print("Split: " + ".." + sub_path + os.sep + file_in)
+            
+        else:
+            print("Skip: " + ".." + sub_path + os.sep + file_in)
+        
+    # housekeeping
     directory_out = directory_in + os.sep + "split_images"
     if not os.path.exists(directory_out):
         os.mkdir(directory_out)
     
+    # initiate threads
+    threadpool = Pool(threads)
+    
     for subdir, dirs, files in os.walk(directory_in):
-
-        for file_in in files:
-            
-            #criteria for doing something
-            if file_in.endswith(image_extension):
-                path_in = subdir + os.sep + file_in  # what's the image called and where is it?
-                path_out = directory_out + subdir[len(directory_out):] + os.sep + file_in
+        sub_path = subdir[len(directory_in): ]
+        
+        if not "split_images" in subdir:
+            if not os.path.exists(directory_out + subdir[len(directory_in): ]):
+                os.mkdir(directory_out + subdir[len(directory_in): ])
                 
-                #Import and export image
-                io.imsave(path_out, io.imread(path_in))
+            threadpool.map(_load_unload_image, files)
+
+    # end threads
+    threadpool.close()
+    threadpool.join() 
+                  
     return("Done")
+    
+    
+    
