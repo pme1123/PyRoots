@@ -12,11 +12,43 @@ tiff_splitter
 from matplotlib import pyplot as plt
 from scipy import ndimage
 import numpy as np
-
-# for tiff splitter
-from skimage import io
+from skimage import io, color
 import os
 from multiprocessing.dummy import Pool
+import pyroots as pr
+
+def band_viewer(img, colorspace, return_bands=False):
+    """
+    Utility function to look at the separate bands of multiple colorspace versions.
+    
+    Parameters
+    ----------
+    img : array
+        RGB image, such as imported by ``skimage.io.imread``
+    colorspace : str
+        Colorspace to which to convert. Must be finish one the ``skimage.color.rgb2*``
+        functions.
+    return_bands : bool
+        Do you want to return the bands of the colorspace in an object?
+    
+    Returns
+    -------
+    Plots the bands of the given colorspace using ``pyroots.multi_image_plot``. If
+    ``return_bands`` is ``True``, returns these bands in a list.
+    
+    See Also
+    --------
+    ``skimage.color``, ``pyroots.multi_image_split``
+    
+    """
+    
+    #image is rgb
+    if colorspace is not "rgb":
+        img = getattr(color, 'rgb2' + colorspace)(img)
+    bands = pr.img_split(img)
+    pr.multi_image_plot([zoom(i) for i in bands], [colorspace[0], colorspace[1], colorspace[2]])
+    
+    return (bands)
 
 def multi_image_plot(images, titles, 
 					 color_map="gray", axis="off", 
