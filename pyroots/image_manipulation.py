@@ -41,34 +41,46 @@ def img_split(img):
 	return(band1, band2, band3)
 
 
-def circle_mask(img, param=None):
-	"""
-	Create an elliptical mask to limit analysis to the center of an image.
-	Useful for microscope images that are blurry at the edges, for example.
-
-	Parameters
-	----------
-	img : array
-		image upon which to draw the mask
-	param : int
-		list of x and y dimensions of the ellipse. Defaults to an ellipse
-		spanning the image.
-
-	Returns
-	-------
-	A boolean ndarray where the central circle is 0 and the edges are 1.
-
-	"""
-
-	if param is None:
-		param_x = img.shape[0]//2
-		param_y = img.shape[1]//2
-	else:
-		param_x, param_y = param[0:1]
-
-	dim_x, dim_y = img.shape[0]//2, img.shape[1]//2	   
-   
-	x, y = np.ogrid[-param_x:param_x, -param_y:param_y] #makes an open grid of 
-	mask = x**2 + y**2 >= param_x**2 #>= removes the outside edges. 
-	
-	return(~mask)
+def ellipse_mask(img, percentage_x, percentage_y, offset_x, offset_y, rotation = 0):
+    """
+    Convenience wrapper for ``skimage.draw.ellipse``. Draws an ellipse at (``center`` + 
+    ``offset``) of ``img`` with major and minor axes as a percentage of ``img.shape``. 
+    
+    Parameters
+    ----------
+    img : array
+        Image array that you want to draw a mask on
+    
+    percentage_x : float
+        What percentage of the x-dimension of ``img`` do you want the x-axis to cover? Can
+        be greater than zero
+    percentage_y : float
+    offset_x : int
+        From the middle, how many pixels in the x direction do you want the center of the
+        ellipse to be? Positive is left.
+    offset_y : int
+        Positive is up.
+    rotation : float
+        In [-pi, pi]. See ``skimage.draw.ellipse''
+    
+    Returns
+    -------
+    A binary array with pixels in an ellipse.
+    
+    References
+    ----------
+    See source and examples for ``skimage.draw.ellipse``
+    
+    """
+    
+    x_rad = np.floor((img.shape[0]/2) * (percentage_x/100))
+    y_rad = np.floor((img.shape[1]/2) * (percentage_y/100))
+    
+    x_center = img.shape[0]//2 + offset_x
+    y_center = img.shape[1]//2 - offset_y
+    
+    mask = np.zeros(img.shape)
+    [x, y] = draw.ellipse(y_center, x_center, y_rad, x_rad, shape = img.shape)
+    mask[x, y] = 1
+    
+    return(mask)
