@@ -11,6 +11,7 @@ Contents:
 """
 
 import numpy as np
+from skimage import draw
 
 def img_split(img):
 
