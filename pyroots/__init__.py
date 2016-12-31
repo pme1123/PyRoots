@@ -11,5 +11,5 @@ __all__ = ['noise_removal', 'dirt_removal',
 	   	   'summarize_geometry', 'bin_by_diameter', 
 	   	   '_axis_length', 'skeleton_with_distance',
 	   	   'img_split', 'ellipse_mask',
-	   	   'multi_image_plot', 'random_blobs', 'tiff_splitter', 'band_viewer',
+	   	   'multi_image_plot', 'random_blobs', 'tiff_splitter', 'band_viewer', '_zoom',
 	   	   'pyroots_analysis', 'image_loop']

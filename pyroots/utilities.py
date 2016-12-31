@@ -17,7 +17,14 @@ import os
 from multiprocessing.dummy import Pool
 import pyroots as pr
 
-def band_viewer(img, colorspace, return_bands=False):
+def _zoom(image, xmin, xmax, ymin, ymax)
+    """
+    Subset an array to the cordinates suggested by the titles
+    """
+    
+    return(image[ymin:ymax, xmin:xmax])
+
+def band_viewer(img, colorspace, zoom_coords = None, return_bands=False):
     """
     Utility function to look at the separate bands of multiple colorspace versions.
     
@@ -28,6 +35,8 @@ def band_viewer(img, colorspace, return_bands=False):
     colorspace : str
         Colorspace to which to convert. Must be finish one the ``skimage.color.rgb2*``
         functions.
+    zoom_coords : list
+        List of four integers denoting the start and end of an area of interest to view more closely, or none
     return_bands : bool
         Do you want to return the bands of the colorspace in an object?
     
@@ -41,12 +50,20 @@ def band_viewer(img, colorspace, return_bands=False):
     ``skimage.color``, ``pyroots.multi_image_split``
     
     """
+    if zoom_coords is None:
+        xmin = 0
+        xmax = img.shape[1]
+        ymin = 0
+        ymax = img.shape[0]
+    else:
+        xmin, xmax, ymin, ymax = zoom_coords
     
     #image is rgb
     if colorspace is not "rgb":
         img = getattr(color, 'rgb2' + colorspace)(img)
     bands = pr.img_split(img)
-    pr.multi_image_plot([zoom(i) for i in bands], [colorspace[0], colorspace[1], colorspace[2]])
+    pr.multi_image_plot([pr._zoom(i, xmin, xmax, ymin, ymax) for i in bands], 
+                        [colorspace[0], colorspace[1], colorspace[2]])
     
     return (bands)
 
