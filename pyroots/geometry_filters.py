@@ -5,15 +5,27 @@ Created on Sun Dec 11 09:46:19 2016
 @author: pme
 
 Contents:
-- _percentile_filter
-- diameter_filter
-- length_width_filter
-
+Various functions for removing candidate objects based on their geometry. 
+- _percentile_filter: Supports diameter filter
+- diameter_filter: Based on diameter along the medial axis
+- length_width_filter: Based on length and diameter along the medial axis.
+- morphology_filter: Based on properties of convex hulls and equivalent ellilpses
+- hollow_filter: Based on medial axis lengths of original and filled objects
 """
 
 from scipy import ndimage
 import pandas as pd
 import numpy as np
+from skimage import morphology, measure
+from pyroots import _axis_length
+
+#########################################################################################################################
+#########################################################################################################################
+#######                                                                                                          ########
+#######                                   Diameter Filter, Percentile Filter                                     ########
+#######                                                                                                          ########
+#########################################################################################################################
+#########################################################################################################################
 
 def _percentile_filter(labels, diameter_image, percentile, value, test_type):
     """
@@ -188,6 +200,15 @@ def diameter_filter(skeleton_dictionary,
     
     return(out)
     
+#########################################################################################################################
+#########################################################################################################################
+#######                                                                                                          ########
+#######                                           Length-Width Filter                                            ########
+#######                                                                                                          ########
+#########################################################################################################################
+#########################################################################################################################
+
+    
 def length_width_filter(skeleton_dictionary, threshold=5):
     """
     Remove objects based on length:(average) width ratios from skeletonized images.
@@ -223,8 +244,8 @@ def length_width_filter(skeleton_dictionary, threshold=5):
     
     labels, labels_ls = ndimage.label(skeleton_dictionary["objects"])
     
-    if labels_ls + 1 is not len(geometry_in.index):
-        return("Incompatible Geometry Array and Image")
+    if labels_ls + 1 != len(geometry_in.index):
+        raise("Incompatible Geometry Array and Image: Image has " + str(labels_ls + 1) + " objects. Geometry DataFrame has " + str(len(geometry_in.index)) + " objects.")
     
     # Calculate length:width ratios in the geom array and test whether they pass
     ratio = geometry_in['Length'] / (geometry_in['Diameter']+0.000001)
@@ -248,4 +269,159 @@ def length_width_filter(skeleton_dictionary, threshold=5):
            "diameter" : new_diam_skeleton,
            "geometry" : geom_out}
     
+    return(out)
+
+
+#########################################################################################################################
+#########################################################################################################################
+#######                                                                                                          ########
+#######                                           Morphology Filter                                              ########
+#######                                                                                                          ########
+#########################################################################################################################
+#########################################################################################################################
+
+def morphology_filter(image, loose_eccentricity=0, loose_solidity=1, 
+                      strict_eccentricity=0, strict_solidity=1, 
+                      min_length=None, min_size=None):
+    """
+    Removes objects based on properties of convex hulls and equivalent
+    ellipses, plus size. Defaults are for no filtering. This algorithm is
+    moderately fast, but time increases with number of objects due to the
+    need for loops. 
+    
+    Parameters
+    ----------
+    image : 2D binary array.
+        Candidate objects
+    loose_eccentricity, loose_solidity : float
+        AND filters. Must pass both levels.
+    strict_eccentricity, strict_solidity : float
+        OR filters. Must pass one of these
+    min_length : int
+        in pixels, of ellipse with equivalent moments to convex hull
+    min_size : int
+        in pixels, of area of candidate object.
+    
+    Returns
+    -------
+    2D binary array
+    
+    See Also
+    --------
+    `skimage.measure.regionprops`, `ndimage.label`
+    """
+    
+    # Label objects and attach regionprops methods for each label
+    labels = ndimage.label(image)[0]
+    props = measure.regionprops(labels)
+
+    # calculate eccentricity
+    eccentricity = [0] + [i.eccentricity for i in props]
+    eccentricity = np.array(eccentricity)[labels]  # make an image based on labels
+
+    # calculate solidity
+    solidity = [0] + [i.area / i.convex_area for i in props]
+    solidity = np.array(solidity)[labels]  # make an image based on labels
+    
+    # loose and strict filters
+    loose = ((solidity < loose_solidity) * (solidity > 0)) * (eccentricity > loose_eccentricity)  # AND
+    strict = ((solidity < strict_solidity) * (solidity > 0)) + (eccentricity > strict_eccentricity)  # OR 
+    
+    # calculate length
+    if min_length is None:
+        length = np.ones(image.shape)
+    else:
+        length = [0] + [i.major_axis_length for i in props]
+        length = np.array(length)[labels]  # make an image based on labels
+        length = length > min_length
+    
+    # calculate size
+    if min_size is None:
+        size = np.ones(image.shape)
+    else:
+        size = [0] + [i.area for i in props]
+        size = np.array(size)[labels]  # make an image based on labels
+        size = (size > min_size)       # filter
+    
+    # Combine and exit. Must pass all. 
+    out = strict * loose * length * size  # AND
+    return(out)
+
+#########################################################################################################################
+#########################################################################################################################
+#######                                                                                                          ########
+#######                                             Hollow Filter                                                ########
+#######                                                                                                          ########
+#########################################################################################################################
+#########################################################################################################################
+    
+def hollow_filter(image, ratio=1.5, fill_kernel=15, **kwargs):
+    """
+    For each object, what is the ratio of A to B where:
+        A = medial axis length before filling (~= "perimeter" of hollow objects)
+        B = medial axis length after filling (= true medial of hollow objects)
+    Filters objects based on ratio, which is a ceiling for true objects. Assumes
+    true objects are not hollow. 
+    
+    This is a relatively slow algorithm, and should be performed last (time
+    proportional to number of objects due to loops). 
+        
+    Parameters
+    ----------
+    image : 2D binary array
+        input image. 
+    ratio : float
+        Maximum of A:B (see above)
+    fill_kernel : int
+        Radius of disk, in pixels, used to fill objects.
+    **kwargs : dict
+        passed on to `pyroots.noise_removal`
+    
+    Returns
+    -------
+    A 2D binary array
+    
+    See Also
+    --------
+    `skimage.morphology.binary_closing`, `pyroots.skeleton_with_distance`, 
+    `pyroots.noise_removal`
+    """
+    
+    img = image.copy()
+    
+    # Labels, object slices
+    labels, labels_ls = ndimage.label(img)
+    props = measure.regionprops(labels)  # for slicing the image around objects
+    
+    # kernel
+    kernel = morphology.disk(fill_kernel)
+    # Smooth the image. Medial axis is highly sensitive to bumps. 
+#     skel = pr.noise_removal(img, **kwargs)
+#     skel = morphology.skeletonize(skel)  # pull 'length' medial axis of all original objects
+    
+    test = [0] * (labels_ls + 1)
+    for i in range(labels_ls + 1):    
+        # Bounds of slice to only the object of interest
+        a, b, c, d = props[i-1].bbox
+        a = max(a - fill_kernel, 0)  # include a buffer. Stay within bounds of image.
+        b = max(b - fill_kernel, 0)
+        c = min(c + fill_kernel, img.shape[1])
+        d = min(d + fill_kernel, img.shape[0])
+
+        temp_object = labels[a:c, b:d] == i
+        
+        # compute original medial axis length
+        open_medial = morphology.skeletonize(temp_object)
+        open_length = _axis_length(open_medial)[1]  # length float only
+        
+        #close object and compute new axis length
+        closed_medial = morphology.binary_closing(temp_object, selem=kernel)
+        closed_medial = morphology.skeletonize(closed_medial)
+        closed_length = _axis_length(closed_medial)[1]
+        
+        # Does the ratio pass the threshold?
+        test[i] = open_length/closed_length < ratio
+    
+    # update image
+    out = np.array(test)[labels] * labels > 0
     return(out)
