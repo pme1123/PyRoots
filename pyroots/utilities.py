@@ -4,6 +4,8 @@ Created on Fri May  6 11:24:24 2016
 @author: pme
 
 Contents:
+_zoom
+band_viewer
 multi_image_plot
 random_blobs
 tiff_splitter
@@ -19,7 +21,7 @@ import pyroots as pr
 
 def _zoom(image, xmin, xmax, ymin, ymax):
     """
-    Subset an array to the cordinates suggested by the titles
+    Subset an array to the bounding box suggested by the titles
     """
     
     return(image[ymin:ymax, xmin:xmax])
