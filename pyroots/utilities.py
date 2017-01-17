@@ -17,7 +17,7 @@ import os
 from multiprocessing.dummy import Pool
 import pyroots as pr
 
-def _zoom(image, xmin, xmax, ymin, ymax)
+def _zoom(image, xmin, xmax, ymin, ymax):
     """
     Subset an array to the cordinates suggested by the titles
     """
@@ -51,109 +51,122 @@ def band_viewer(img, colorspace, zoom_coords = None, return_bands=False):
     
     """
     if zoom_coords is None:
-        xmin = 0
-        xmax = img.shape[1]
-        ymin = 0
-        ymax = img.shape[0]
-    else:
-        xmin, xmax, ymin, ymax = zoom_coords
+        zoom_coords = {'xmin' : 0,
+                       'xmax' : img.shape[1],
+                       'ymin' : 0,
+                       'ymax' : img.shape[0]}
+        
+    elif isinstance(zoom_coords, list) is True:
+        zoom_coords = {'xmin' : zoom_coords[0],
+                       'xmax' : zoom_coords[1],
+                       'ymin' : zoom_coords[2],
+                       'ymax' : zoom_coords[3]}
+    
+    elif isinstance(zoom_coords, dict) is False:
+        raise "Zoom Coordinates Issue"
     
     #image is rgb
     if colorspace is not "rgb":
         img = getattr(color, 'rgb2' + colorspace)(img)
     bands = pr.img_split(img)
-    pr.multi_image_plot([pr._zoom(i, xmin, xmax, ymin, ymax) for i in bands], 
-                        [colorspace[0], colorspace[1], colorspace[2]])
     
-    return (bands)
+    
+    if return_bands is True:
+        return (bands)
 
+    else:
+        pr.multi_image_plot([pr._zoom(i, **zoom_coords) for i in bands], 
+                            [colorspace[0], colorspace[1], colorspace[2]])
+                            
+
+    
 def multi_image_plot(images, titles, 
-					 color_map="gray", axis="off", 
-					 titlesize=16, interpolation="None"):
-	"""
-	Wrapper function for ``pyplot.imshow`` to plot multiple images along a 
-	single row for easy comparisons. Requires ``matplotlib.pyplot``
+                     color_map="gray", axis="off", 
+                     titlesize=16, interpolation="None"):
+    """
+    Wrapper function for ``pyplot.imshow`` to plot multiple images along a 
+    single row for easy comparisons. Requires ``matplotlib.pyplot``
 
-	Parameters
-	----------
-	images : list
-		Image arrays to plot
-	titles : list 
-		Titles (strings) for each image
-	color_map : string
-		Color map for 1d images. 3d images plot normally
-	axis : bool
-		Show pixel location axis?
-	titlesize : int
-		Size of titles 
-	interpolation : str
-		Interpolation method for rendering
-	
-	Returns
-	-------
-	An array of images generated using ``matplotlib.pyplot.show()``
+    Parameters
+    ----------
+    images : list
+        Image arrays to plot
+    titles : list 
+        Titles (strings) for each image
+    color_map : string
+        Color map for 1d images. 3d images plot normally
+    axis : bool
+        Show pixel location axis?
+    titlesize : int
+        Size of titles 
+    interpolation : str
+        Interpolation method for rendering
+    
+    Returns
+    -------
+    An array of images generated using ``matplotlib.pyplot.show()``
 
-	"""
-	from matplotlib import pyplot as plt
-	
-	n = len(images)
-	
-	plt.figure(figsize=(3*n, 4))
-	
-	for k in range(1, n+1):
-		plt.subplot(1, n, k)
-		plt.imshow(images[k-1], cmap=color_map, interpolation = interpolation)
-		plt.axis(axis)
-		plt.title(titles[k-1], size=titlesize)
-	
-	plt.subplots_adjust(wspace=0.02, hspace=0.02, 
-						top=0.9, bottom=0, left=0, right=1)
+    """
+    from matplotlib import pyplot as plt
+    
+    n = len(images)
+    
+    plt.figure(figsize=(3*n, 4))
+    
+    for k in range(1, n+1):
+        plt.subplot(1, n, k)
+        plt.imshow(images[k-1], cmap=color_map, interpolation = interpolation)
+        plt.axis(axis)
+        plt.title(titles[k-1], size=titlesize)
+    
+    plt.subplots_adjust(wspace=0.02, hspace=0.02, 
+                        top=0.9, bottom=0, left=0, right=1)
 
-	return plt.show()
-	
+    return plt.show()
+    
 
 def random_blobs(n=100, dims=256, seed=1, size=0.25, noise=True):
 
-	"""
-	Function to create a square image with blobs formed around randomly placed
-	points. The image can include random noise to make everything blurry
-	for testing methods. Requires ``numpy`` and ``scipy.ndimage``.
-	
-	Parameters
-	----------
-	n : int
-		set the number of points
-	dims : int
-		length of each side of the square
-	seed : int
-		set random number seed
-	size : float
-		set relative size of blobs around each point
-	noise : bool
-		add noise to the image
+    """
+    Function to create a square image with blobs formed around randomly placed
+    points. The image can include random noise to make everything blurry
+    for testing methods. Requires ``numpy`` and ``scipy.ndimage``.
+    
+    Parameters
+    ----------
+    n : int
+        set the number of points
+    dims : int
+        length of each side of the square
+    seed : int
+        set random number seed
+    size : float
+        set relative size of blobs around each point
+    noise : bool
+        add noise to the image
 
-	Returns
-	-------
-	An dims*dims array of blobs as either boolean or float
-	
-	"""
+    Returns
+    -------
+    An dims*dims array of blobs as either boolean or float
+    
+    """
 
-	im = np.zeros((dims, dims))
-	np.random.seed(seed)
-	points = (dims * np.random.random((2, n))).astype(np.int) #blob locations
-	im[(points[0]), (points[1])] = 1
-	im = ndimage.gaussian_filter(im, sigma=float(size) * dims / (n)) #blob size
-	mask = (im > im.mean()).astype(np.float) #make hard lines around blobs
-	
-	if noise is True:
-		mask += 0.1*im
-		img = mask + 0.2 * np.random.randn(*mask.shape)	#matrix of the shape of mask
-		img += abs(img.min())
-		img = img / img.max()
-	else:
-		img = mask
-	return img
-	
+    im = np.zeros((dims, dims))
+    np.random.seed(seed)
+    points = (dims * np.random.random((2, n))).astype(np.int) #blob locations
+    im[(points[0]), (points[1])] = 1
+    im = ndimage.gaussian_filter(im, sigma=float(size) * dims / (n)) #blob size
+    mask = (im > im.mean()).astype(np.float) #make hard lines around blobs
+    
+    if noise is True:
+        mask += 0.1*im
+        img = mask + 0.2 * np.random.randn(*mask.shape)    #matrix of the shape of mask
+        img += abs(img.min())
+        img = img / img.max()
+    else:
+        img = mask
+    return img
+    
 
 def tiff_splitter(directory_in, extension=".tif", threads=1):
     """
