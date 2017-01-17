@@ -32,7 +32,7 @@ def equalize_exposure(image, kernel_size=None, min_object_size=500, dark_objects
     should give satisfactory results. As a bonus, this often enhances white balance and colors.
     
     For color images, run on each band separately and then combine into a [dim_x, dim_y, 3] numpy array.
-    When run on color images, this function improves white balance and colors.
+    When run on color images with `stretch=True`, this function improves white balance and colors.
     
     Essential for filtering candidate objects by color. Slow; could be optimized with `opencv_python`, though
     this function doesn't support masking when calculating means.
