@@ -14,7 +14,7 @@ Various methods for filtering and cleaning up candidate objects.
 from scipy import ndimage
 from skimage import morphology, filters, color, img_as_float  # generally ~5x faster than ndimage
 import numpy as np
-from pyroots import img_split
+from pyroots.image_manipulation import img_split
 
 
 #########################################################################################################################
@@ -128,9 +128,8 @@ def color_filter(image, objects, colorspace, target_band, low, high, percent):
        
     """
     # convert rgb image if necessary, select band.
-    colorband = image.copy()
     if colorspace.lower() is not 'rgb':
-        colorband = getattr(color, "rgb2" + colorspace.lower())(colorband)
+        colorband = getattr(color, "rgb2" + colorspace.lower())(image)
 
     colorband = img_split(colorband)[target_band]
 

@@ -23,17 +23,17 @@ threshold_args = {'block_size' : 29,    # small enough to respond strongly to th
 
                
 # Filtering: Color (band value). First dict chooses colorspace and band. Second passes to pyroots.percentile_in_range
-color_args_1 = [{'colorspace' : 'rgb',  # Colorspace from which to select band
-                 'band'       : 2},     # Band of colorspace                
-                {'low'     : 0.7,    # minimum of range for color value
-                 'high'    : 0.85,   # maximum of range for color value
-                 'percent' : 50}]    # minimum percent of all pixels that must fall with the range
+color_args_1 = {'colorspace'  : 'rgb',  # Colorspace from which to select band
+                'target_band' : 2,      # Band of colorspace                
+                'low'         : 0.7,    # minimum of range for color value
+                'high'        : 0.85,   # maximum of range for color value
+                'percent'     : 50}     # minimum percent of all pixels that must fall with the range
 
-color_args_2 = [{'colorspace' : 'hsv',  # Colorspace from which to select band
-                 'band'       : 0},     # Band of colorspace                
-                {'low'     : 0.5,    # minimum of range for color value
-                 'high'    : 0.7,    # maximum of range for color value
-                 'percent' : 60}]    # minimum percent of all pixels that must fall with the range
+color_args_2 = {'colorspace'  : 'hsv',  # Colorspace from which to select band
+                'target_band' : 0,      # Band of colorspace                
+                'low'         : 0.5,    # minimum of range for color value
+                'high'        : 0.7,    # maximum of range for color value
+                'percent'     : 60}     # minimum percent of all pixels that must fall with the range
                  
 # Filtering: Morphology. Passes to pyroots.morphology_filter.
     # Eccentricity is of the ratio of the distance between ellipse foci and the major axis length. As eccentricity --> 0, becomes a circle. 

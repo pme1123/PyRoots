@@ -17,7 +17,7 @@ from scipy import ndimage
 import pandas as pd
 import numpy as np
 from skimage import morphology, measure
-from pyroots import _axis_length
+from pyroots.skeletonization import _axis_length
 
 #########################################################################################################################
 #########################################################################################################################

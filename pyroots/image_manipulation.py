@@ -42,7 +42,7 @@ def img_split(img):
 	return(band1, band2, band3)
 
 
-def ellipse_mask(img, percentage_x, percentage_y, offset_x, offset_y, rotation = 0):
+def ellipse_mask(img, percentage_x=100, percentage_y=100, offset_x=0, offset_y=0, rotation=0):
     """
     Convenience wrapper for ``skimage.draw.ellipse``. Draws an ellipse at (``center`` + 
     ``offset``) of ``img`` with major and minor axes as a percentage of ``img.shape``. 
