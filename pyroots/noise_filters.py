@@ -128,8 +128,10 @@ def color_filter(image, objects, colorspace, target_band, low, high, percent):
        
     """
     # convert rgb image if necessary, select band.
-    if colorspace.lower() is not 'rgb':
+    if colorspace.lower() !='rgb':
         colorband = getattr(color, "rgb2" + colorspace.lower())(image)
+    else:
+        colorband = image.copy()
 
     colorband = img_split(colorband)[target_band]
 
