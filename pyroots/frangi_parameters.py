@@ -6,6 +6,11 @@ Parameters for frangi filtering
 Change to `None` to ignore. Save a copy to change. Works with ``pyroots.frangi_approach``.
 """
 
+"""
+Updated Jan 17 2016
+
+"""
+
 # Pick colorspace and bands
 colors = {'colorspace' : 'rgb',  # must be reachable with `skimage.color.rgb2***()`
           'band'       : 0}      # RGB: 0 = red, 1 = green, 2 = blue. 
