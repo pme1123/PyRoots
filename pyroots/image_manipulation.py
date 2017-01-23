@@ -23,7 +23,7 @@ from skimage import draw, morphology, filters, exposure, img_as_float
 #########################################################################################################################
 
 
-def equalize_exposure(image, kernel_size=None, min_object_size=500, dark_objects=True, stretch=False):
+def equalize_exposure(image, iterations=1, kernel_size=None, min_object_size=500, dark_objects=True, stretch=False):
     """
     Filter a grayscale image with uneven brightness across it, such as you might see in a microscope image.
     Removes large objects using adaptive thresholding based on `min_object_size`, then calculates the mean
@@ -87,17 +87,24 @@ def equalize_exposure(image, kernel_size=None, min_object_size=500, dark_objects
     
     objects = ~filters.threshold_adaptive(img, block_size, offset = 0.01*img.max())
     objects = morphology.remove_small_objects(objects, min_size = min_object_size)
-    
-    # Global mean
-    img_mean = np.ma.masked_array(img, mask = objects).mean()
 
-    # Local means
-    local_means = filters.rank.mean(img, selem=kernel, mask=~objects)
-    local_means = filters.gaussian(local_means, kernel_size)
-    
-    #correction
-    out = img_in + (img_mean - local_means)
-    out = img_as_float(out)
+    # Correct Exposure x times
+    i = 0
+    while i < iterations:
+        # Global mean
+        img_mean = np.ma.masked_array(img, mask=objects).mean()
+        
+        # global means
+        local_means = filters.rank.mean(img, selem=kernel, mask=~objects)
+        local_means = filters.gaussian(local_means, kernel_size)
+        
+        # Correct Image
+        img += (img_mean - local_means)
+        img[img>1] = 1  # for compatibilty with img_as_float
+        img[img<0] = 0  # for compatibilty with img_as_float
+        i += 1
+
+    out = img_as_float(img)
     
     return(out)
 
