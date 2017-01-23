@@ -15,6 +15,9 @@ Contents:
 
 import numpy as np
 from skimage import draw, morphology, filters, exposure, img_as_float
+from multiprocessing import Pool  
+from multiprocessing.dummy import Pool as ThreadPool
+
 
 
 #########################################################################################################################
