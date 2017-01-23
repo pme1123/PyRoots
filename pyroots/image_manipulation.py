@@ -7,6 +7,9 @@ Created on Fri May  6 14:55:54 2016
 Contents:
 - img_split
 - circle_mask
+- calc_exposure_correction
+- _arrays_mean
+- _arrays_var
 
 """
 
@@ -106,6 +109,161 @@ def equalize_exposure(image, iterations=1, kernel_size=None, min_object_size=500
 
     out = img_as_float(img)
     
+    return(out)
+    
+    
+#########################################################################################################################
+#########################################################################################################################
+#######                                                                                                          ########
+#######                             Calculate Exposure Correction from Images List                               ########
+#######                                        and supporting functions                                          ########
+#######                                                                                                          ########
+#########################################################################################################################
+#########################################################################################################################
+
+def _arrays_mean(array_list):
+    """
+    Calculate the mean of each pixel [i, j, k] in a list of arrays.
+    
+    Parameters
+    ----------
+    array_list : list of ndarray
+        Must have the same shape. 
+    
+    Returns
+    -------
+    ndarray
+    """
+    dims = array_list[0].shape[2]
+    out = np.zeros(array_list[0].shape)
+    var_out = out.copy()
+     
+#    i = 1
+    for i in range(dims):
+        temp = [j[:, :, i] for j in array_list]
+        
+        # calculate mean
+        means_out = np.zeros(temp[0].shape)
+        for k in temp:
+            means_out += k  # sum
+        
+        out[:, :, i] = means_out / len(array_list)  # mean
+    
+    return(out)
+  
+def _arrays_var(array_list, mean_img): 
+    """
+    Calculate the variance of each pixel [i, j, k] in a list of arrays.
+    
+    Parameters
+    ----------
+    array_list : list of ndarray
+        Must all be same shape.
+    mean_img : ndarray
+        Output from `pyroots._arrays_mean` or equivalent. 
+        
+    Returns
+    -------
+    ndarray
+    """ 
+    dims = array_list[0].shape[2]
+    out = np.zeros(array_list[0].shape)
+
+    for i in range(dims):
+        temp = [j[:, :, i] for j in array_list]
+        mean = mean_img[:, :, i]
+        var_temp = [(k - mean)**2 for k in temp]  # squared error
+        
+        # calculate mean
+        var_out = np.zeros(temp[0].shape)
+        for m in var_temp:
+            var_out += m  # sum squared error
+        
+        out[:, :, i] = var_out / (len(array_list)-1)  # variance = mean squared error
+    
+    return(out)    
+
+def calc_exposure_correction(image_list, smooth_iterations=1, stretch=False, return_variance=False, threads=1):
+    """
+    Convenience function a common correction to R, G, and B bands from microscope images
+    that have systematic differences in brightness. The common correction
+    is the average correction of those in image_list. This should deliver a sufficient 
+    exposure correction for most images in a dataset without calling `pyroots.equalize_exposure`
+    on each image (which would be extremely slow). 
+    
+    Images in image_list should have relatively few objects that are evenly dispersed,
+    and have no large objects. They also should be representative of the color tones of the
+    image dataset.
+    
+    Calls `pyroots.equalize_exposure`.
+    
+    Parameters
+    ----------
+    image_list : list of ndarray
+        List of images (probably, but not necessarily, rgb) that have unequal exposure. 
+    smooth_iterations : int
+        How many times do you want to run the `pyroots.equalize_exposure` algorithm on 
+        the images? Defaults to `1`.
+    stretch : bool
+        Rescale band intensities to fill colorspace, for aesthetics? Gives inconsistent
+        behavior depending on the individual image; not recommended for analysis purposes. 
+        Defaults to `False`.
+    return_variance : bool
+        Do you also want to calculate the variance of each pixel in the correction image? 
+        For diagnostic purposes. Defaults to `False`.
+    threads : int
+        For processing equalize_exposure in parallel. How many threads do you want to run?
+        Speeds up calculation dramatically. See `multiprocessing`. 
+    
+    Returns
+    -------
+    If `return_variance=False`, an `ndarray` of the mean value correction for each band.
+    
+    If `return_variance=True`, a list of two `ndarray`s. The first is the mean value, 
+    the second is the variance.
+    
+    See Also
+    --------
+    `pyroots.equalize_exposure`, `multiprocessing.dummy.Pool`
+    
+    """
+    
+    def _core_fn(image):
+        new = img_split(img_as_float(image))
+        orig = [i.copy() for i in new]
+
+        i = 0
+        while i < smooth_iterations:
+            new = [equalize_exposure(i, stretch=stretch) for i in new]  # list
+            i += 1
+        
+        diff = [new[i] - orig[i] for i in range(3)]
+        out = np.zeros(image.shape)
+        for i in range(image.shape[2]):
+            out[:, :, i] = diff[i]
+        
+        return(out)
+        
+    #init multiprocessing
+    if threads > len(image_list):
+        threads = len(image_list)
+    
+    thread_pool = ThreadPool(threads)
+    
+    equalized_ = thread_pool.map(_core_fn, image_list)  # run core function
+    thread_pool.close()
+    thread_pool.join()
+    
+    out = _arrays_mean(equalized_)  # calculate mean
+    
+    if return_variance is True:  # calculate variance
+        if len(image_list) > 1:
+            var = _arrays_var(equalized_, out)
+        else:
+            var = np.zeros(out.shape)
+        
+        out = [out, var]
+
     return(out)
 
 
