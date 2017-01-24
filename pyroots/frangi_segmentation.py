@@ -5,7 +5,7 @@ Author: @pme1123
 Created: Jan 17th, 2017
 
 Frangi Segmentation - combines various functions into a single one for convenience
-Image Loop - For series analysis across directories. 
+Frangi Image Loop - For series analysis across directories. 
 
 """
 
@@ -147,7 +147,7 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
 
 
     
-def image_loop(base_directory, image_extension, path_to_params, out_dir="Pyroots Analyzed", mask=None, save_images=False):
+def frangi_image_loop(base_directory, image_extension, path_to_params, out_dir="Pyroots Analyzed", mask=None, save_images=False):
     """
     Reference function to loop through images in a directory. As it is written, it returns
     a dataframe from `pyroots.frangi_segmentation` and also writes images showing the objects analyzed.
