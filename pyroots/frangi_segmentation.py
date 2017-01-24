@@ -11,14 +11,16 @@ Frangi Image Loop - For series analysis across directories.
 
 # TODO: Reminder - don't forget to update these imports!
 import os
-from PIL import Image
+# from PIL import Image
 import pandas as pd
 from pyroots.image_manipulation import img_split
 from pyroots.geometry_filters import morphology_filter, hollow_filter
 from pyroots.noise_filters import color_filter
 from pyroots.summarize import bin_by_diameter, summarize_geometry
 from pyroots.skeletonization import skeleton_with_distance
-from skimage import io, color, filters, morphology
+from skimage import io, color, filters, morphology, img_as_ubyte
+from multiprocessing import Pool  
+from multiprocessing.dummy import Pool as ThreadPool
 
 def frangi_segmentation(image, colors, frangi_args, threshold_args,
                         color_args_1=None, color_args_2=None, 
@@ -145,9 +147,8 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
 ####################                                                                                                                               ###############################
 ##################################################################################################################################################################################
 
-
     
-def frangi_image_loop(base_directory, image_extension, path_to_params, out_dir="Pyroots Analyzed", mask=None, save_images=False):
+def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyroots Analyzed", mask=None, save_images=False, threads=1):
     """
     Reference function to loop through images in a directory. As it is written, it returns
     a dataframe from `pyroots.frangi_segmentation` and also writes images showing the objects analyzed.
@@ -160,8 +161,25 @@ def frangi_image_loop(base_directory, image_extension, path_to_params, out_dir="
     ----------
     base_directory : str
         Directory to the images or subdirectories containing the images. 
+    image_extension : str
+        Extension of images to analyze
+    params : str
+        Path + filename for parameters file for `pyroots.frangi_segmentation`. If None (default), define the parameters
+        in the workspace using appropriately named dictionaries. 
+    out_dir : str
+        Name of directory to write output images
+    mask : ndarray
+        TODO: For limiting the analysis
+    save_images : bool
+        Do you want to save images of the objects?
+    threads : int
+        For multiprocessing
     """
-    exec(open(path_to_params).read())
+    
+    try:
+        exec(open(params).read())
+    except:
+        pass
     
     #Make an output directory for the analyzed images and data.
     if save_images is True:
@@ -174,34 +192,48 @@ def frangi_image_loop(base_directory, image_extension, path_to_params, out_dir="
     else:
         img_df = pd.DataFrame(columns=("ImageName", "DiameterClass", "Length"))
     
+    out = []
     #Begin looping
-    
-    for subdir, dirs, files in os.walk(base_directory):
-        for file_in in files:
-            
-            #criteria for doing something
+    for subdir, dirs, files in os.walk(base_directory):        
+        # What we'll do:        
+        def _core_fn(file_in):
             if file_in.endswith(image_extension) and not subdir.endswith(out_dir):
-                filepath = subdir + os.sep + file_in  # what's the image called and where is it?
-    
+                time_in = current_time()
+                                
+                path_in = subdir + os.sep + file_in  # what's the image called and where is it?
+                file_name = subdir[len(base_directory):] + file_in
+
                 #Create filein name
                 filein = "DIR" + subdir[len(base_directory):] + os.sep + file_in
                 #Import image
-                img = io.imread(filepath)[:,:,0:3]  # load image
+                img = io.imread(path_in)[:,:,0:3]  # load image
 
                 #Run through the analysis. Requires pyroots.pyroots_analysis reference function.    ###############################################################
-                objects_dict = frangi_segmentation(image, colors, frangi_args,                      ######   THIS IS WHERE YOU INSERT YOUR CUSTOM FUNCTION   ######
-                                                   threshold_args, color_args_1,                    ###############################################################
-                                                   color_args_2, morphology_args, 
-                                                   hollow_args, hole_filling, 
-                                                   diameter_bins, image_name=file_in)
-                
-                #Paste the data into the output dataframe       
-                img_df = pd.concat((img_df, objects_dict['geometry']))                              ###### MAY NEED TO UPDATE THIS, DEPENDING ON THE GEOMETRY DATAFRAME YOUR FUNCTION CREATES
-                
+                objects_dict = frangi_segmentation(img, colors, frangi_args,                      ######   THIS IS WHERE YOU INSERT YOUR CUSTOM FUNCTION   ######
+                                                      threshold_args, color_args_1,                    ###############################################################
+                                                      color_args_2, morphology_args, 
+                                                      hollow_args, hole_filling, 
+                                                      diameter_bins, image_name=file_name)
                 #save images?
                 if save_images is True:
-                    #Convert boolean array to 8-bit, 1-band image. Requires PIL.
-                    im = Image.fromarray((255 * objects_dict['objects']).astype('uint8')) #white roots, black background    #### MAY NEED TO UPDATE THIS. 
-                    im.save(base_directory + os.sep + out_dir + os.sep + file_in)
-            
-    return(img_df)
+                    #Convert boolean array to 8-bit, 1-band image. Requires PIL
+    #                im = Image.fromarray((255 * objects_dict['objects']).astype('uint8')) #white roots, black background    #### MAY NEED TO UPDATE THIS. 
+                    path_out = base_directory + os.sep + out_dir + os.sep + subdir[len(base_directory):] + file_in 
+                    io.imsave(path_out, 255*objects_dict['objects'].astype('uint8'))
+                
+                print("Done: " + subdir[len(base_directory):] + file_in)
+                df_out = objects_dict['geometry']
+                return(df_out)
+
+        # Init threads within each subdir (at file level)
+        thread_pool = ThreadPool(threads)
+        # Work on _core_fn
+        out += thread_pool.map(_core_fn, files)
+        # finish
+        thread_pool.close()
+        thread_pool.join()
+    
+    out = pd.concat([i for i in out])
+    
+    #Done        
+    return(out)
