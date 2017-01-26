@@ -61,8 +61,8 @@ def _percentile_filter(labels, diameter_image, percentile, value, test_type):
     # calculate percentile diameter for each object
     out = []
     for i in range(labels.max()):
-        temp = diameter_image[labels == i+1]  # 0 is background
-        temp = np.percentile(temp, percentile)
+        temp = np.ma.masked_array(skel['diameter'], labels != i+1)  # 0 is background
+        temp = np.percentile(temp.compressed(), percentile)
         out.append(temp)
     
     #select objects that meet diameter criteria at percentile
@@ -139,8 +139,8 @@ def diameter_filter(skeleton_dictionary,
     objects_in = skeleton_dictionary["objects"]
 
     # make sure skeletons for diameter and length are updated with objects
-    diameter = diameter_in * objects_in
-    length = length_in * objects_in
+    diameter = diameter_in * (objects_in > 0)
+    length = length_in * (objects_in > 0)
     
     #Label objects for indexing
     labels, labels_ls= ndimage.label(diameter > 0,  # convert float to boolean
@@ -184,8 +184,7 @@ def diameter_filter(skeleton_dictionary,
     
     # Create a new geometry dataframe
     geom_out = pd.DataFrame({'Length' : objects_length,
-                             'Diameter' : objects_diameter
-                             })
+                             'Diameter' : objects_diameter})
     geom_out = geom_out[geom_out['Diameter'].notnull()]  # subset only present objects
     
     #### update the objects ####
