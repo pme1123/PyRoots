@@ -237,7 +237,7 @@ def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyr
                 if save_images is True:
                     #Convert boolean array to 8-bit, 1-band image. Requires PIL
     #                im = Image.fromarray((255 * objects_dict['objects']).astype('uint8')) #white roots, black background    #### MAY NEED TO UPDATE THIS. 
-                    path_out = base_directory + os.sep + out_dir + os.sep + subdir[len(base_directory):] + file_in 
+                    path_out = base_directory + os.sep + out_dir + os.sep + subdir[len(base_directory):] + os.path.splitext(file_in)[0] + '.png'
                     io.imsave(path_out, 255*objects_dict['objects'].astype('uint8'))
                 
                 print("Done: " + subdir[len(base_directory):] + file_in)
