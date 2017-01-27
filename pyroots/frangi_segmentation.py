@@ -14,18 +14,20 @@ import os
 # from PIL import Image
 import pandas as pd
 from pyroots.image_manipulation import img_split
-from pyroots.geometry_filters import morphology_filter, hollow_filter
+from pyroots.geometry_filters import morphology_filter, hollow_filter, diameter_filter
 from pyroots.noise_filters import color_filter
 from pyroots.summarize import bin_by_diameter, summarize_geometry
 from pyroots.skeletonization import skeleton_with_distance
 from skimage import io, color, filters, morphology, img_as_ubyte
 from multiprocessing import Pool  
 from multiprocessing.dummy import Pool as ThreadPool
+from numpy import array, uint8
+import importlib
 
 def frangi_segmentation(image, colors, frangi_args, threshold_args,
                         color_args_1=None, color_args_2=None, 
                         morphology_args=None, hollow_args=None, hole_filling=None, 
-                        diameter_bins=None, image_name="image"):
+                        diameter_args=None, diameter_bins=None, image_name="image"):
     """
     Possible approach to object detection using frangi filters. Selects colorbands for
     analysis, runs frangi filter, thresholds to identify candidate objects, then removes
@@ -122,21 +124,24 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
     # Skeletonize
     skel = skeleton_with_distance(working_image)
     
+    # Diameter filter
+    diam = diameter_filter(skel, **diameter_args)
+    
     # Summarize
     if diameter_bins is None:
-        summary_df = summarize_geometry(skel['geometry'], image_name)
+        summary_df = summarize_geometry(diam['geometry'], image_name)
 
     else:
-        diam_out, summary_df = bin_by_diameter(skel['length'],
-                                                  skel['diameter'],
-                                                  diameter_bins,
-                                                  image_name)
-        skel['diameter'] = diam_out
+        diam_out, summary_df = bin_by_diameter(diam['length'],
+                                               diam['diameter'],
+                                               diameter_bins,
+                                               image_name)
+        diam['diameter'] = diam_out
     
     out = {'geometry' : summary_df,
-           'objects'  : skel['objects'],
-           'length'   : skel['length'],
-           'diameter' : skel['diameter']}
+           'objects'  : diam['objects'],
+           'length'   : diam['length'],
+           'diameter' : diam['diameter']}
     
     return(out)
     
@@ -148,7 +153,7 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
 ##################################################################################################################################################################################
 
     
-def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyroots Analyzed", mask=None, save_images=False, threads=1):
+def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyroots Analyzed", mask=None, save_images=False, threads=1, extra_imports=None):
     """
     Reference function to loop through images in a directory. As it is written, it returns
     a dataframe from `pyroots.frangi_segmentation` and also writes images showing the objects analyzed.
@@ -174,12 +179,24 @@ def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyr
         Do you want to save images of the objects?
     threads : int
         For multiprocessing
+    extra_imports : list
+        If raises error importing params, then write a list of lists as
+            [[lib1, fun1, fun2, ...], 
+             [lib2, fun2, fun2, ...], 
+             [...]]. 
     """
+    if extra_imports is not None:
+        for k in extra_imports:
+            for i in range(1, len(k+1)):
+                try:
+                    importlib.import_module(k[0], k[i])
+                except:
+                    raise("%fn could not be loaded from %pkg" % (k[i], k[0]))
     
     try:
-        exec(open(params).read())
+        exec(open(params).read(), globals())
     except:
-        pass
+        raise ValueError("Couldn't load params file. Try checking it for words like 'array' or\n'uint8' that need to be loaded with numpy and load these\n functions using `extra_imports`.... Or edit source.")
     
     #Make an output directory for the analyzed images and data.
     if save_images is True:
@@ -192,13 +209,12 @@ def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyr
     else:
         img_df = pd.DataFrame(columns=("ImageName", "DiameterClass", "Length"))
     
-    out = []
+    out = []  # for tracking progress
     #Begin looping
     for subdir, dirs, files in os.walk(base_directory):        
         # What we'll do:        
         def _core_fn(file_in):
             if file_in.endswith(image_extension) and not subdir.endswith(out_dir):
-                time_in = current_time()
                                 
                 path_in = subdir + os.sep + file_in  # what's the image called and where is it?
                 file_name = subdir[len(base_directory):] + file_in
@@ -212,8 +228,9 @@ def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyr
                 objects_dict = frangi_segmentation(img, colors, frangi_args,                      ######   THIS IS WHERE YOU INSERT YOUR CUSTOM FUNCTION   ######
                                                       threshold_args, color_args_1,                    ###############################################################
                                                       color_args_2, morphology_args, 
-                                                      hollow_args, hole_filling, 
-                                                      diameter_bins, image_name=file_name)
+                                                      hollow_args, hole_filling,
+                                                      diameter_args, diameter_bins, 
+                                                      image_name=file_name)
                 #save images?
                 if save_images is True:
                     #Convert boolean array to 8-bit, 1-band image. Requires PIL
