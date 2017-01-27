@@ -61,7 +61,7 @@ def _percentile_filter(labels, diameter_image, percentile, value, test_type):
     # calculate percentile diameter for each object
     out = []
     for i in range(labels.max()):
-        temp = np.ma.masked_array(skel['diameter'], labels != i+1)  # 0 is background
+        temp = np.ma.masked_array(diameter_image, labels != i+1)  # 0 is background
         temp = np.percentile(temp.compressed(), percentile)
         out.append(temp)
     
