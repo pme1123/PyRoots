@@ -153,7 +153,7 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
 ##################################################################################################################################################################################
 
     
-def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyroots Analyzed", table_out="Pyroots_Analyzed.csv", mask=None, save_images=False, threads=1, extra_imports=None):
+def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyroots Analyzed", table_out="Pyroots_Analyzed.txt", mask=None, save_images=False, threads=1, extra_imports=None):
     """
     Reference function to loop through images in a directory. As it is written, it returns
     a dataframe from `pyroots.frangi_segmentation` and also writes images showing the objects analyzed.
@@ -174,7 +174,7 @@ def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyr
     out_dir : str
         Name of directory to write output images
     table_out : str
-        Name of the table to which you want to export results. Currently only supports .csv.
+        Name of the table to which you want to export results. Currently only supports tab-delimeted.
     mask : ndarray
         TODO: For limiting the analysis
     save_images : bool
@@ -255,7 +255,7 @@ def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyr
     out = pd.concat([i for i in out])
     
     try:
-        out.to_csv(base_directory + os.sep + out_dir + os.sep + table_out) 
+        out.to_csv(base_directory + os.sep + out_dir + os.sep + table_out, sep = "\t", index = False) 
     except:
         raise ValueError("Warning: Did not export output to a table.")
     #Done        
