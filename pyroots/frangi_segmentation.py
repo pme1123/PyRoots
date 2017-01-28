@@ -23,6 +23,7 @@ from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
 from numpy import array, uint8
 import importlib
+import numpy as np
 
 def frangi_segmentation(image, colors, frangi_args, threshold_args,
                         color_args_1=None, color_args_2=None, 
@@ -93,14 +94,17 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
     
     # Filter candidate objects by color
     try:
-        working_image = color_filter(image, working_image, **color_args_1)  #colorspace, target_band, low, high, percent)
-        
-        try:
-            working_image = color_filter(image, working_image, **color_args_2)  # nesting equates to an "and" statement.
-        except:
-            pass
+        color1 = color_filter(image, working_image, **color_args_1)  #colorspace, target_band, low, high, percent)
     except:
-        pass
+        color1 = np.ones(working_image.shape)  # no filtering
+         
+    try:
+        color2 = color_filter(image, working_image, **color_args_2)  # nesting equates to an "and" statement.
+    except:
+        color2 = np.ones(working_image.shape)  # no filtering
+    
+    working_image = color1 * color2
+    
     
     # Filter candidate objects by morphology
     try:

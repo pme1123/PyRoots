@@ -12,7 +12,7 @@ Various methods for filtering and cleaning up candidate objects.
 """
 
 from scipy import ndimage
-from skimage import morphology, filters, color, img_as_float  # generally ~5x faster than ndimage
+from skimage import morphology, filters, color, img_as_float
 import numpy as np
 from pyroots.image_manipulation import img_split
 
@@ -58,7 +58,7 @@ def _in_range(image, low, high):
     return(out)
 
 
-def grayscale_filter(image, objects, low, high, percent):
+def grayscale_filter(image, objects, low, high, percent, invert=False):
     """
     Determines whether each object in `objects` has values within the range given
     in `image`. Handles polar spaces by automatically 'rotating' and restacking the 
@@ -76,6 +76,8 @@ def grayscale_filter(image, objects, low, high, percent):
         high value of range. In fraction of colorspace [0:1]
     percent : float
         percent of pixels that must be within (low:high). [0, 100].
+    invert : bool
+        Are you selecting objects that you don't want to keep?
     
     Returns
     -------
@@ -97,9 +99,13 @@ def grayscale_filter(image, objects, low, high, percent):
     
     # update objects
     out_objects = np.array(test)[labels]
+
+    if invert is True:
+        out_objects = ~out_objects
+    
     return(out_objects)
 
-def color_filter(image, objects, colorspace, target_band, low, high, percent):
+def color_filter(image, objects, colorspace, target_band, low, high, percent, invert=False):
     """
     Wrapper for `pyroots.grayscale_filter`. Adds functionality to (optionally) convert an rgb image to
     a selected colorspace, and choose a single band from that colorspace. Tests whether `percent` of pixels
@@ -116,11 +122,13 @@ def color_filter(image, objects, colorspace, target_band, low, high, percent):
     target_band : int
         What band of `colorspace` do you want in [0:2]?
     low : float
-        low value of range. In fraction of colorspace [0:1]
+        Low value of range. In fraction of colorspace [0:1]
     high : float
-        high value of range. In fraction of colorspace [0:1]
+        High value of range. In fraction of colorspace [0:1]
     percent : float
-        percent of pixels that must be within (low:high). [0, 100].
+        Percent of pixels that must be within (low:high). [0, 100].
+    invert : bool
+        Are you selecting objects that you don't want to keep?
     
     Returns
     -------
@@ -136,7 +144,8 @@ def color_filter(image, objects, colorspace, target_band, low, high, percent):
     colorband = img_split(colorband)[target_band]
 
     # Filter color
-    out = grayscale_filter(colorband, objects, low, high, percent)      ##### ADD PR
+    out = grayscale_filter(colorband, objects, low, high, percent, invert)
+    
     return(out)
 
 
