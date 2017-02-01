@@ -395,7 +395,7 @@ def register_colors(image, template=1):
     -----
     Uses `skimage.filters.scharr` to find edges in each band, then finds and
     applies an affine transformation to register the images using 
-    `cv2.estimateRigidTransform(fullAffine=False)` and `cv2.warpAffine`.
+    `cv2.estimateRigidTransform` and `cv2.warpAffine`.
     """
     
     #find dimensions
