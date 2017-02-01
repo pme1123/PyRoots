@@ -10,3 +10,4 @@ pandas
 PIL
 os
 multiprocessing
+cv2
