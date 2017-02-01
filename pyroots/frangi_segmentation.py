@@ -26,7 +26,7 @@ import importlib
 import numpy as np
 
 def frangi_segmentation(image, colors, frangi_args, threshold_args,
-                        color_args_1=None, color_args_2=None, 
+                        color_args_1=None, color_args_2=None, color_args_3=None, 
                         morphology_args=None, hollow_args=None, hole_filling=None, 
                         diameter_args=None, diameter_bins=None, image_name="image"):
     """
@@ -48,6 +48,9 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
         Parameters to pass to `pyroots.color_filter`.
     color_args_2 : list
         Parameters to pass to `pyroots.color_filter`. Combines with color_args_1
+        in an 'and' statement.
+    color_args_3 : list
+        Parameters to pass to `pyroots.color_filter`. Combines with color_args_1, 2
         in an 'and' statement.
     morphology_args : dict
         Parameters to pass to `pyroots.morphology_filter`
@@ -103,8 +106,12 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
     except:
         color2 = np.ones(working_image.shape)  # no filtering
     
-    working_image = color1 * color2
+    try:
+        color3 = color_filter(image, working_image, **color_args_3)  # nesting equates to an "and" statement.
+    except:
+        color3 = np.ones(working_image.shape)  # no filtering
     
+    working_image = color1 * color2 * color3
     
     # Filter candidate objects by morphology
     try:
@@ -129,7 +136,10 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
     skel = skeleton_with_distance(working_image)
     
     # Diameter filter
-    diam = diameter_filter(skel, **diameter_args)
+    try:
+        diam = diameter_filter(skel, **diameter_args)
+    except:
+        pass
     
     # Summarize
     if diameter_bins is None:
@@ -233,7 +243,8 @@ def frangi_image_loop(base_directory, image_extension, params=None, out_dir="Pyr
                 #Run through the analysis. Requires pyroots.pyroots_analysis reference function.    ###############################################################
                 objects_dict = frangi_segmentation(img, colors, frangi_args,                      ######   THIS IS WHERE YOU INSERT YOUR CUSTOM FUNCTION   ######
                                                       threshold_args, color_args_1,                    ###############################################################
-                                                      color_args_2, morphology_args, 
+                                                      color_args_2, color_args_3,
+                                                      morphology_args, 
                                                       hollow_args, hole_filling,
                                                       diameter_args, diameter_bins, 
                                                       image_name=file_name)
