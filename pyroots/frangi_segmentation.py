@@ -18,7 +18,7 @@ from pyroots.geometry_filters import morphology_filter, hollow_filter, diameter_
 from pyroots.noise_filters import color_filter
 from pyroots.summarize import bin_by_diameter, summarize_geometry
 from pyroots.skeletonization import skeleton_with_distance
-from skimage import io, color, filters, morphology, img_as_ubyte
+from skimage import io, color, filters, morphology, img_as_ubyte, img_as_float
 from multiprocessing import Pool  
 from multiprocessing.dummy import Pool as ThreadPool
 from numpy import array, uint8
@@ -86,6 +86,9 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
         pass
     
     working_image = img_split(working_image)[colors['band']]
+    
+    if colors['invert'] is True:
+        working_image = 1 - img_as_float(working_image)
     
     # Frangi vessel enhancement
     working_image = filters.frangi(working_image, **frangi_args)
