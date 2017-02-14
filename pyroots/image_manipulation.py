@@ -10,7 +10,7 @@ Contents:
 - calc_exposure_correction
 - _arrays_mean
 - _arrays_var
-- register_colors
+- _center_image
 """
 
 import numpy as np
@@ -365,69 +365,27 @@ def ellipse_mask(img, percentage_x=100, percentage_y=100, offset_x=0, offset_y=0
 #########################################################################################################################
 #########################################################################################################################
 #######                                                                                                          ########
-#######                                             Register Colors                                              ########
+#######                                              Center Image                                                ########
 #######                                                                                                          ########
 #########################################################################################################################
 #########################################################################################################################
 
-def register_colors(image, template=1):
+    
+def _center_image(image):
     """
-    Fix color abberation in images by calculating and applying an affine
-    transformation. Color abberation is a result of uneven refraction of light
-    of different wavelengths. It shows up as systematic blue and red edges in 
-    high-contrast areas.
-    
-    This should be done before other processing to minimize 
-    artifacts.
-    
-    Parameters
-    ----------
-    image : ndarray
-        3- or 4-channel image, probably RGB.
-    template : int
-        Band to which to align the other bands. Usually G in RGB. 
-    
-    Returns
-    -------
-    An ndarray of `image.size`
-    
-    Notes
-    -----
-    Uses `skimage.filters.scharr` to find edges in each band, then finds and
-    applies an affine transformation to register the images using 
-    `cv2.estimateRigidTransform` and `cv2.warpAffine`.
+    Take the middle 50% of an image
     """
-    
-    #find dimensions
-    height, width, depth = image.shape
-    
-    #define bands to analyze
-    analyze = []
-    for i in range(depth):
-        if i != template:
-            analyze.append(i)
-    
-    # Extract bands, find edges
-    bands = img_split(image)
-    edges = [img_as_ubyte(filters.scharr(i)) for i in bands]
 
-    #make output image
-    out = np.zeros((height, width, depth), dtype=np.uint8)
-    out[:, :, template] = bands[template]
+    dim_x, dim_y = image.shape[0:2]
     
-    for i in analyze:
-        # calculate transformation
-        warp_matrix = cv2.estimateRigidTransform(edges[template],
-                                                 edges[i],
-                                                 fullAffine=True)
-        # transform
-        aligned = cv2.warpAffine(bands[i], 
-                                 warp_matrix, 
-                                 (width, height), 
-                                 flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,  # otherwise the transformation goes the wrong way
-                                 borderMode = cv2.BORDER_CONSTANT)
-        
-        # add to color image                             
-        out[:, :, i] = aligned
+    x = int(dim_x/2)
+    off_x = int(dim_x/4)
+    xmin = x - off_x
+    xmax = x + off_x
     
-    return(out)
+    y = int(dim_y/2)
+    off_y = int(dim_y/4)
+    ymin = y - off_y
+    ymax = y + off_y
+    
+    return(image[xmin:xmax, ymin:ymax])
