@@ -136,7 +136,7 @@ def correct_brightfield(image, brightfield, correction_factor=1):
 #########                             Band Registration                          ##############
 #########                                                                        ##############
 ###############################################################################################
-def register_bands(image, template_band=1):
+def register_bands(image, template_band=1, ECC_criterion=True):
     """
     Fix chromatic abberation in images by calculating and applying an affine
     transformation. Chromatic abberation is a result of uneven refraction of light
@@ -151,6 +151,9 @@ def register_bands(image, template_band=1):
         3- or 4-channel image, probably RGB.
     template : int
         Band to which to align the other bands. Usually G in RGB. 
+    ECC_criterion : bool
+        Use ECC criterion to find optimal warp? Improves results, but increases
+        processing time 5x. 
     
     Returns
     -------
@@ -160,7 +163,8 @@ def register_bands(image, template_band=1):
     -----
     Uses `skimage.filters.scharr` to find edges in each band, then finds and
     applies an affine transformation to register the images using 
-    `cv2.estimateRigidTransform` and `cv2.warpAffine`.
+    `cv2.estimateRigidTransform` and `cv2.warpAffine`. If `ECC_criterion=True`,
+    the matrix from `estimateRigidTransform` is updated using `cv2.findTransformECC`. 
     """
     
     #find dimensions
@@ -173,7 +177,7 @@ def register_bands(image, template_band=1):
             analyze.append(i)
     
     # Extract bands, find edges
-    bands = img_split(image)
+    bands = pr.img_split(image)
     edges = [img_as_ubyte(filters.scharr(i)) for i in bands]
 
     #make output image
@@ -181,10 +185,16 @@ def register_bands(image, template_band=1):
     out[:, :, template_band] = bands[template_band]
     
     for i in analyze:
-        # calculate transformation
-        warp_matrix = cv2.estimateRigidTransform(edges[template_band],
+        # Estimate transformation
+        warp_matrix = np.array(cv2.estimateRigidTransform(edges[template_band],
                                                  edges[i],
-                                                 fullAffine=True)
+                                                 fullAffine=False), dtype=np.float32)
+        
+        if ECC_criterion == True:
+            # Optimize using ECC criterion and default settings
+            warp_matrix = cv2.findTransformECC(edges[template_band],
+                                               edges[i],
+                                               warpMatrix=warp_matrix)[1]
         # transform
         aligned = cv2.warpAffine(bands[i], 
                                  warp_matrix, 
@@ -195,7 +205,7 @@ def register_bands(image, template_band=1):
         # add to color image                             
         out[:, :, i] = aligned
     
-    return(out)
+    return(img_as_ubyte(out))
 
  
 ###############################################################################################
