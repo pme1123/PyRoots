@@ -9,10 +9,11 @@ Contents:
 - preprocessing_filters
 """
 import numpy as np
-from skimage import filters, img_as_ubyte, exposure
+from skimage import filters, img_as_ubyte, exposure, color
 from pyroots import img_split, _center_image
 import cv2
 from warnings import warn
+import colour
 
 
 ###############################################################################################
@@ -66,31 +67,48 @@ def detect_motion_blur(image, ratio=2, band=None):
 
 ###############################################################################################
 #########                                                                        ##############
-#########                           Missing Band Detector                        ##############
+#########                           Calc Temperature Distance                    ##############
 #########                                                                        ##############
 ###############################################################################################
 
-def detect_missing_bands(image, percentile=90, min_value=0.0):
+def calc_temperature_distance(image, percentiles, max_distance):
     """
-    Detecs whether an image is missing a band. This happens with some camera processing software.
+    Calculates the temperature of the center 25% of an image based on percentiles,
+    and returns the mean distance of these percentiles from the 'Planckian Locus'. This 
+    distance is useful for flagging images that were improperly saved or processed by the 
+    camera. Temperature and distance are based on the method of Robertson (1968).
+    
     
     Parameters
     ----------
     image : ndarray
-        RGB image
-    percentile : float
-        percentile of values in each band to test against the threshold. Default 90.
-    min_value : float
-        floor of values at each band to pass. Default 0.0
+        rgb image
+    percentiles : float
+        list of percentiles to use to calculate temperature and distance.
+    max_distance : int or None
+        What is the maximum distance allowed from the Planckian locus? If None, returns the distance. 
+        Otherwise, returns a boolean of (distance < max_distance).
     
     Returns
     -------
-    bool - Does the image pass criteria?
-    """
-    tests = img_split(image)
-    tests = [np.percentile(i, percentile) > min_value for i in tests]
+    float or bool
     
-    return(sum(tests) == 3)
+    See also
+    --------
+    `colour.uv_to_CCT_Robertson1968`, `skimage.color.rgb2luv`
+    """
+    luv = color.rgb2luv(_center_image(image))
+    u = [np.percentile(luv[:, :, 1], i) for i in percentiles]
+    v = [np.percentile(luv[:, :, 2], i) for i in percentiles]
+    dist = [colour.uv_to_CCT_Robertson1968((u[i], v[i]))[1] for i in range(len(percentiles))]
+    dist = np.mean(dist)
+    
+    if max_distance == None:
+        out = dist
+    else:
+        out = dist < max_distance
+    
+    return(out)
 
 
 
@@ -216,7 +234,7 @@ def register_bands(image, template_band=1, ECC_criterion=True):
 ###############################################################################################
 def preprocessing_filters(image,
                           blur_params=None, 
-                          missing_band_params=None, 
+                          temperature_params=None, 
                           low_contrast_params=None,
                           center=True):
                          # brightfield_params=None, 
@@ -233,8 +251,8 @@ def preprocessing_filters(image,
         band of rgb to check for blur
     blur_params : dict or `None`
         parameters for `pyroots.detect_blur`
-    missing_band_params : dict or `None`
-        parameters for `pyroots.detect_missing_bands`
+    temperature_params : dict or `None`
+        parameters for `pyroots.calc_temperature_distance`
     low_contrast_params : dict or `None`
         parameters for `skimage.exposure.is_low_contrast`
     center : bool
@@ -258,11 +276,11 @@ def preprocessing_filters(image,
         pass
         
     try:
-        bands = detect_missing_bands(image, **missing_band_params)
+        bands = calc_temperature_distance(image, **temperature_params)
     except:
         bands = True
         if missing_band_params is not None:
-            warn("Skipping missing band check", UserWarning)
+            warn("Skipping temperature check", UserWarning)
         pass
         
     try:

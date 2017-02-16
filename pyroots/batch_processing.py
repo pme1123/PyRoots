@@ -104,7 +104,7 @@ def preprocessing_filter_loop(dir_in,
                         
                         test = preprocessing_filters(img,
                                                      blur_params,
-                                                     missing_band_params,
+                                                     temperature_params,
                                                      low_contrast_params,
                                                      center)
                         
