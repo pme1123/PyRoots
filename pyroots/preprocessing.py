@@ -12,6 +12,7 @@ import numpy as np
 from skimage import filters, img_as_ubyte, exposure
 from pyroots import img_split, _center_image
 import cv2
+from warnings import warn
 
 
 ###############################################################################################
@@ -177,7 +178,7 @@ def register_bands(image, template_band=1, ECC_criterion=True):
             analyze.append(i)
     
     # Extract bands, find edges
-    bands = pr.img_split(image)
+    bands = img_split(image)
     edges = [img_as_ubyte(filters.scharr(i)) for i in bands]
 
     #make output image
@@ -253,7 +254,7 @@ def preprocessing_filters(image,
     except:
         blur = True
         if blur_params is not None:
-            raise UserWarning("Skipping motion blur check")
+            warn("Skipping motion blur check", UserWarning)
         pass
         
     try:
@@ -261,7 +262,7 @@ def preprocessing_filters(image,
     except:
         bands = True
         if missing_band_params is not None:
-            raise UserWarning("Skipping missing band check")
+            warn("Skipping missing band check", UserWarning)
         pass
         
     try:
@@ -269,7 +270,7 @@ def preprocessing_filters(image,
     except:
         contrast = True
         if low_contrast_params is not None:
-            raise UserWarning("Skipping low contrast check")
+            warn("Skipping low contrast check", UserWarning)
         pass
     
     return(blur * bands * contrast)
@@ -281,9 +282,11 @@ def preprocessing_filters(image,
 #########                                                                        ##############
 ###############################################################################################
 def preprocessing_actions(image,
-               brightfield_params=None, 
-               registration_params=None,
-               bilateral_filter_params=None):
+                          brightfield,
+                          brightfield_params=None, 
+                          registration_params=None,
+                          smoothing_params=None,
+                          count_warnings=True):
     """
     Combines preprocessing functions into a convenience function.
     
@@ -297,34 +300,44 @@ def preprocessing_actions(image,
         parameters for `pyroots.register_bands`
     bilateral_filter_params : dict or `None`
         parameters for `cv2.bilateralFilter`, which smooths the image while preserving edges.
+    count_warnings : bool
+        also return a flag counting number of warnings encountered?
     
     Returns
     -------
-    ndarray of `image.shape` after running through functions listed.
-    
+        1. ndarray of `image.shape` after running through functions listed.
+        2. A marker for flagging errors (if `warn=True`)
+
     """
     out = image.copy()
+    warning_flag = 0
+    
+    try:
+        out = correct_brightfield(out, brightfield, **brightfield_params)
+    except:
+        if brightfield_params is not None:
+            warning_flag += 1
+            warn("Skipping brightfield correction", UserWarning)
+        pass
+    
+    try:
+        out = cv2.bilateralFilter(out, -1, **smoothing_params)
+    except:
+        if bilateral_filter_params is not None:
+            warning_flag += 1
+            warn("Skipping bilateral filter", UserWarning)
+        pass
     
     try:
         out = register_bands(out, **registration_params)
     except:
         if registration_params is not None:
-            raise UserWarning("Skipping band registration")
+            warning_flag += 1
+            warn("Skipping band registration", UserWarning)
         pass
         
-    try:
-        out = correct_brightfield(out, **brightfield_params)
-    except:
-        if brightfield_params is not None:
-            raise UserWarning("Skipping brightfield correction")
-        pass
-    
-    try:
-        out = cv2.bilateralFilter(out, **bilateral_filter_params)
-    except:
-        if bilateral_filter_params is not None:
-            raise UserWarning("Skipping bilateral filter")
-        pass
+    if count_warnings == True:
+        out = [out, warning_flag]
     
     return(out)
 
