@@ -7,7 +7,7 @@ from .preprocessing import detect_motion_blur, detect_missing_bands, correct_bri
 from .utilities import multi_image_plot, random_blobs, tiff_splitter, band_viewer, _zoom
 from .example_functions import pyroots_analysis, image_loop
 from .frangi_segmentation import frangi_segmentation, frangi_image_loop
-from .batch_processing import preprocessing_filter_loop#, preprocessing_manipulation_loop
+from .batch_processing import preprocessing_filter_loop, preprocessing_actions_loop
 
 
 __all__ = ['noise_removal', 'dirt_removal', 'grayscale_filter', 'color_filter', '_in_range',
@@ -18,5 +18,5 @@ __all__ = ['noise_removal', 'dirt_removal', 'grayscale_filter', 'color_filter', 
 	   	   'detect_motion_blur', 'detect_missing_bands', 'correct_brightfield', 'register_bands', 'preprocessing_filters', 'preprocessing_actions',
 	   	   'multi_image_plot', 'random_blobs', 'tiff_splitter', 'band_viewer', '_zoom',
 	   	   'pyroots_analysis', 'image_loop',
-	   	   'preprocessing_filter_loop', #'preprocessing_manipulation_loop',
+	   	   'preprocessing_filter_loop', 'preprocessing_actions_loop',
 	   	   'frangi_segmentation', 'frangi_image_loop']

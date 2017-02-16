@@ -323,7 +323,7 @@ def preprocessing_actions(image,
     try:
         out = cv2.bilateralFilter(out, -1, **smoothing_params)
     except:
-        if bilateral_filter_params is not None:
+        if smoothing_params is not None:
             warning_flag += 1
             warn("Skipping bilateral filter", UserWarning)
         pass
