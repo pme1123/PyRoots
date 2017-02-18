@@ -11,6 +11,7 @@ Contents:
 - _arrays_mean
 - _arrays_var
 - _center_image
+- fill_gaps
 """
 
 import numpy as np
@@ -389,3 +390,52 @@ def _center_image(image):
     ymax = y + off_y
     
     return(image[xmin:xmax, ymin:ymax])
+    
+
+
+#########################################################################################################################
+#########################################################################################################################
+#######                                                                                                          ########
+#######                                               Fill Gaps                                                  ########
+#######                                                                                                          ########
+#########################################################################################################################
+#########################################################################################################################
+
+
+def fill_gaps(image, closing_structure, min_hole_size, median_structure=None):
+    """
+    This function closes small gaps between and within objects and smooths edges. It is a 
+    'finishing' step before skeletonization, and improves the quality of the skeleton by removing 
+    gaps and minimizing bumps. It also enables removing close, parallel objects such as appear under
+    the microscope as a single, long, clear object with sharp, parallel edges. These spurrious objects would
+    otherwise pass earlier filters but are, in fact, spurrious. The function itself is a wrapper for
+    `skimage.morphology.binary_closing`, `skimage.morphology.remove_small_holes`, and `skimage.filters.median` 
+    on a binary image. 
+    
+    Parameters
+    ----------
+    image : ndarray
+        Binary image of candidate objects
+    closing_structure : ndarray
+        Binary structure to perform binary closing. 1 to skip. 
+    min_hole_size : int
+        Holes with areas smaller than this (in pixels) are removed. 0 to skip. 
+    median_structure : ndarray
+        Binary structure to use for a median filter. Defaults to square connectivity of 1 (manhattan = 1).
+    
+    Returns
+    -------
+    ndarray : Binary image of candidate objects.
+    
+    """
+    
+    if median_structure is None:
+        median_structure = [[0, 1, 0],
+                            [1, 1, 1],
+                            [0, 1, 0]]
+    
+    out = morphology.binary_closing(image, closing_structure)
+    out = morphology.remove_small_holes(out, min_size=min_hole_size)
+    out = filters.median(out, selem=median_structure)
+    
+    return(out)
