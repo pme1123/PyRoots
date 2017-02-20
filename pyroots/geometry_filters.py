@@ -319,7 +319,7 @@ def morphology_filter(image, loose_eccentricity=0, loose_solidity=1,
     eccentricity = np.array(eccentricity)[labels]  # make an image based on labels
 
     # calculate solidity
-    solidity = [0] + [i.area / i.convex_area for i in props]
+    solidity = [0] + [i.filled_area / i.convex_area for i in props]
     solidity = np.array(solidity)[labels]  # make an image based on labels
     
     # loose and strict filters
