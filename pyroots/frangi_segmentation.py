@@ -25,12 +25,15 @@ from warnings import warn
 
 def frangi_segmentation(image, colors, frangi_args, threshold_args,
                         color_args_1=None, color_args_2=None, color_args_3=None, 
-                        morphology_args=None, hollow_args=None, fill_gaps_args=None, 
-                        diameter_args=None, diameter_bins=None, image_name="image"):
+                        morphology_args_1=None, morphology_args_2, hollow_args=None, 
+                        fill_gaps_args=None, diameter_args=None, diameter_bins=None, 
+                        image_name="image"):
     """
     Possible approach to object detection using frangi filters. Selects colorbands for
     analysis, runs frangi filter, thresholds to identify candidate objects, then removes
     spurrious objects by color and morphology characteristics. See frangi_approach.ipynb. 
+    
+    Unless noted, the dictionaries are called by their respective functions in order.
     
     Parameters
     ----------
@@ -50,8 +53,10 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
     color_args_3 : list
         Parameters to pass to `pyroots.color_filter`. Combines with color_args_1, 2
         in an 'and' statement.
-    morphology_args : dict
-        Parameters to pass to `pyroots.morphology_filter`
+    morphology_args_1 : dict
+        Parameters to pass to `pyroots.morphology_filter`    
+    morphology_args_2 : dict
+        Parameters to pass to `pyroots.morphology_filter`. Happens after fill_gaps_args in the algorithm.
     hollow_args : dict
         Parameters to pass to `pyroots.hollow_filter`
     fill_gaps_args : dict
@@ -121,10 +126,10 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
     
     # Filter candidate objects by morphology
     try:
-        working_image = morphology_filter(working_image, **morphology_args)
+        working_image = morphology_filter(working_image, **morphology_args_1)
     except:
-        if morphology_args is not None:
-            warn("Skipping morphology filter")
+        if morphology_args_1 is not None:
+            warn("Skipping morphology filter 1")
         pass
     
     # Filter candidate objects by hollowness
@@ -143,7 +148,15 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
             warn("Skipping filling gaps")
         pass
     
-    # Skeletonize
+    # Filter candidate objects by morphology
+    try:
+        working_image = morphology_filter(working_image, **morphology_args_2)
+    except:
+        if morphology_args_2 is not None:
+            warn("Skipping morphology filter 2")
+        pass
+        
+    # Skeletonize. Now working with a dictionary of objects.
     skel = skeleton_with_distance(working_image)
     
     # Diameter filter
