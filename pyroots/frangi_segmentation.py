@@ -163,7 +163,7 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
     try:
         diam = diameter_filter(skel, **diameter_args)
     except:
-        if diam_filter is not None:
+        if diameter_args is not None:
             warn("Skipping diameter filter")
         pass
     

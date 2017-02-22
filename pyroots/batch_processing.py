@@ -22,6 +22,8 @@ from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
 from warnings import warn   
 import cv2
+from time import strftime, sleep
+from tqdm import tqdm
 
 
 #################################################################################################
@@ -313,7 +315,7 @@ def frangi_image_loop(dir_in,
     dir_out : str or `None`
         Full path to write images to. If `None` and `save_images=True`, defaults to "Pyroots Analyzed" in `dir_in`.
     table_out : str or `None`
-        Full path to write table to. If `None`, defaults to "Pyroots Results.txt" in `dir_in`. 
+        Full path to which to write the results, including the filename. If `None`, defaults to "Pyroots Results.txt" in `dir_in`. 
     table_overwrite : bool
         If `table_out` exists, do you want to overwrite it?
     params : str
@@ -331,10 +333,30 @@ def frangi_image_loop(dir_in,
              [lib2, fun1, fun2, ...], 
              [...]]. 
     """    
+    ### make sure all dictionaries have something assigned to them, including None
+    dicts = ['colors', 'frangi_args', 'threshold_args', 'color_args_1', 'color_args_2', 
+             'color_args_3', 'morphology_args_1', 'morphology_args_2', 'hollow_args', 
+             'fill_gaps_args', 'diameter_args', 'diameter_bins']
     
-    if params is not None:
-        try:
+    if params is None:
+        print("No parameters defined. Printing paths to images.\n")
+    
+    else:
+        try:  # loading the params. 
             exec(open(params).read(), globals())
+                     
+            print("The parameters you've loaded are:\n")
+            
+            for i in dicts:  # report the parameters
+                try:         # if present in `params` file
+                    print("{} = {}".format(i, str(globals()[i])))
+                    print("\n")
+                
+                except:      # if not present in `params` file, must define as None to work
+                    globals()[i] = None  # assign as none
+                    print("{} = {}".format(i, str(globals()[i])))
+                    print("\n")
+        
         except:
             if os.path.exists(params):
                 raise ValueError("Couldn't load params file. Try checking it for words like 'array' or\
@@ -342,81 +364,101 @@ def frangi_image_loop(dir_in,
                 \n at the top of your script.... Or edit source.")
             else:
                 raise ValueError("Couldn't find params file at {}".format(params))
-    else:
-        print("No parameters defined. Printing paths to images.")
     
-    # make sure all dictionaries have something assigned to them, including None
-    dicts = ['colors',
-             'frangi_args',
-             'threshold_args',
-             'color_args_1',
-             'color_args_2',
-             'color_args_3',
-             'morphology_args_1',
-             'morphology_args_2',
-             'hollow_args',
-             'fill_gaps_args',
-             'diameter_args',
-             'diameter_bins']
-             
-    print("The parameters you've loaded are:\n")
-    for i in dicts:
-        try:
-            print(i + " = " + str(globals()[i]))
-        except:
-            globals()[i] = None  # assign as none
-            print(i + " = " + str(None)) 
-    
-    # make directories out
-    if dir_out is None:
-        dir_out = os.path.join(dir_in, "Pyroots Analyzed")
+    ### Make and initiate table_out
+    # define where to save the table
     if table_out is None:
         table_out = os.path.join(dir_in, "Pyroots Results.txt")
     
-    #Make an output directory for the analyzed images and data.
+    # make the directory, if it doesn't exist
+    try:
+        os.mkdir(os.path.split(table_out)[0])
+    except:
+        pass    
+    
+    # should the table be overwritten? If not, append. 
+    if os.path.exists(table_out):
+        if table_overwrite is False:
+            print("Appending to old data table: {}".format(table_out))
+            new_table = False
+        else:
+            print("Overwriting old data table: {}".format(table_out))
+            new_table = True
+    else:
+        print("Saving data table to: {}".format(table_out))
+        new_table = True
+        
+        
+    # initiate the new table
+    if diameter_bins is None:
+        df_out = pd.DataFrame(columns=("Time", "ImageName", "Length", "NObjects", "MeanDiam"))  # for concatenating purposes
+        ncol = 5
+    else:
+        df_out = pd.DataFrame(columns=("Time", "ImageName", "DiameterClass", "Length"))  # for concatenating purposes
+        ncol = 4
+    
+    if new_table is True:
+        df_out.to_csv(table_out, sep='\t', index=False, header=True, mode='w')
+    
+    else:  # make sure it's compatible
+        temp = pd.read_table(table_out, sep='\t', header=True, nrows=1).columns.values
+        if len(temp) != ncol:  # same number of columns
+            raise ValueError("Cannot Append to Existing Data Table. Different number of columns. Try a new name!")
+        elif sum(temp != df_out.columns.values) > 0:  # same column names
+            raise ValueError("Cannot Append to Existing Data Table. Different number of columns. Try a new name!")
+        
+    
+    ### Make an output directory for the analyzed images and data.
+    if dir_out is None:
+        dir_out = os.path.join(dir_in, "Pyroots Analyzed")
+        
     if save_images is True:
         if params is not None:
-            print("Saving images to {}".format(dir_out))
+            print("\nSaving images to {}".format(dir_out))
         if not os.path.exists(dir_out):
             os.mkdir(dir_out)
     
-    #Test for table overwrite
-    if os.path.exists(table_out):
-        if table_overwrite is False:
-            raise ValueError("Data output table already exists! Aborting...")
-        else:
-            print("Overwriting old data table: {}".format(table_out))
-    else:
-        print("Saving data table to: {}".format(table_out))
+    #Count files to analyze
+    total_files = 0
+    for path, folder, filename in os.walk(dir_in):
+        if dir_out not in path:
+            for f in filename:
+                if f.endswith(extension_in):
+                    total_files += 1
+    print("\nYou have {} images to analyze".format(total_files))
     
     #Begin looping
-    out = []
-    for path, folder, filename in os.walk(dir_in):  
+    out = []  # secondary saving method
+    for path, folder, filename in os.walk(dir_in): 
         if dir_out not in path:   # Don't run in the output directory.
             
             # Make directory for saving objects
             subpath = path[len(dir_in)+1:]
             if not os.path.exists(os.path.join(dir_out, subpath)):
                 os.mkdir(os.path.join(dir_out, subpath))
-                os.mkdir(os.path.join(dir_out, "FAILED", subpath))
             
             # What we'll do:        
             def _core_fn(filename):
                 if filename.endswith(extension_in):
-
+                    # count progress.
+                    
                     path_in = os.path.join(path, filename)
+                    subpath_in = os.path.join(subpath, filename) # for printing purposes
                     # Where to write the output image?
                     filename_out = os.path.splitext(filename)[0] + ".png"
                     path_out = os.path.join(dir_out, subpath, filename_out)
                     
                     if os.path.exists(path_out): #skip
-                        print("ALREADY ANALYZED: {}. Skipping...".format(os.path.join("..", subpath, filename)))
+                        print("\nALREADY ANALYZED: {}. Skipping...\n".format(subpath_in))
                     
-                    else: #(try to) do it
+                    else: #(try to) do it                        
                         try:
                             img = io.imread(path_in)  # load image
                             if mask is not None:
                                 img = img * mask
+                            
+                            if len(img.shape) != 3:
+                                print("\n{} is not a color image! Skipping...\n".format(subpath_in))
                             
                             objects_dict = frangi_segmentation(img, colors,              #### Insert your custom function here ####
                                                                frangi_args, 
@@ -432,45 +474,46 @@ def frangi_image_loop(dir_in,
                                                                diameter_bins, 
                                                                image_name=os.path.join(subpath,
                                                                                        filename))
+                            
                             #save images?
                             if save_images is True:
                                 io.imsave(path_out, 255*objects_dict['objects'].astype('uint8'))
-                            print("Done: {}".format(os.path.join(subpath, filename)))
+                                                       
+                            #Update on progress
+                            print("Done: {}".format(subpath_in))
+                            
                             df_out = objects_dict['geometry']
+                            df_out.insert(0, "Time", strftime("%Y-%M-%d %H:%M:%S"))
+                            
+                            df_out.to_csv(table_out, sep='\t', index=False, header=False, mode='a')                      
                         
                         except:
-                            if params is None:
-                                print(os.path.join(subpath, filename))
-                                df_out = pd.DataFrame(columns=("ImageName", "DiameterClass", "Length"))
-                            elif diameter_bins is None:
-                                print("Couldn't Process: {}.\n     ...Continuing...".format(path_in))
-                                df_out = pd.DataFrame(columns=("ImageName", "Length", "NObjects", "MeanDiam"))    
+                            df_out = None
+                            if params is None:  # just list the images that *would* be analyzed
+                                print(subpath_in)
                             else:
-                                print("Couldn't Process: {}.\n     ...Continuing...".format(path_in))
-                                df_out = pd.DataFrame(columns=("ImageName", "DiameterClass", "Length"))
+                                print("\nCouldn't Process: {}.\n     ...Continuing...".format(subpath_in))
+                            
+                        
                         return(df_out)
 
             # Init threads within each path
             if threads is None:
                 out += map(_core_fn, filename)
             else:
+                sleep(1)  # to give everything time to  load
+                chunksize = min(5, int(total_files/(4*threads))+1)
                 thread_pool = ThreadPool(threads)
-                # Work on _core_fn
-                out += thread_pool.map(_core_fn, filename)
+                # Work on _core_fn (and give progressbar)
+                out += tqdm(thread_pool.imap_unordered(_core_fn, 
+                                                       filename, 
+                                                       chunksize=chunksize), 
+                            total=total_files)
                 # finish
                 thread_pool.close()
                 thread_pool.join()
             
     
     out = pd.concat([i for i in out])
-    
-    try:
-        out.to_csv(table_out, sep="\t", index=False) 
-    except:
-        print(
-            "****************************\n********  WARNING  *********\n****************************\
-            \n\nCould not export results to\n{}!!\n\n****************************\n********  WARNING  *\
-            ********\n****************************".format(table_out))
-        pass
-    #Done        
+           
     return(out)

@@ -11,3 +11,5 @@ os
 multiprocessing
 cv2
 colour-science
+time
+tqdm
