@@ -189,7 +189,7 @@ def preprocessing_actions_loop(dir_in,
     except:
         if params is not None:
             raise ValueError("Couldn't load params file. Try checking it for words like 'array' or\n'uint8' that need to be loaded with numpy and load these\n functions using `extra_imports`.... Or edit source.")
-            return  # can't do anything without hte parameters!
+            return  # can't do anything without the parameters!
     
     # make sure all dictionaries have something assigned to them, including None
     dicts = ['make_brightfield_params', 
@@ -344,6 +344,28 @@ def frangi_image_loop(dir_in,
                 raise ValueError("Couldn't find params file at {}".format(params))
     else:
         print("No parameters defined. Printing paths to images.")
+    
+    # make sure all dictionaries have something assigned to them, including None
+    dicts = ['colors',
+             'frangi_args',
+             'threshold_args',
+             'color_args_1',
+             'color_args_2',
+             'color_args_3',
+             'morphology_args_1',
+             'morphology_args_2',
+             'hollow_args',
+             'fill_gaps_args',
+             'diameter_args',
+             'diameter_bins']
+             
+    print("The parameters you've loaded are:\n")
+    for i in dicts:
+        try:
+            print(i + " = " + str(globals()[i]))
+        except:
+            globals()[i] = None  # assign as none
+            print(i + " = " + str(None)) 
     
     # make directories out
     if dir_out is None:
