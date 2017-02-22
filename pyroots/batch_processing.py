@@ -398,10 +398,10 @@ def frangi_image_loop(dir_in,
         ncol = 4
     
     if new_table is True:
-        df_out.to_csv(table_out, sep='\t', index=False, header=True, mode='w')
+        df_out.to_csv(table_out, sep='\t', index=False, mode='w')
     
     else:  # make sure it's compatible
-        temp = pd.read_table(table_out, sep='\t', header=True, nrows=1).columns.values
+        temp = pd.read_table(table_out, sep='\t', nrows=1).columns.values
         if len(temp) != ncol:  # same number of columns
             raise ValueError("Cannot Append to Existing Data Table. Different number of columns. Try a new name!")
         elif sum(temp != df_out.columns.values) > 0:  # same column names
@@ -502,12 +502,12 @@ def frangi_image_loop(dir_in,
                 out += map(_core_fn, filename)
             else:
                 sleep(1)  # to give everything time to  load
-                chunksize = min(5, int(total_files/(4*threads))+1)
+                chunks = min(5, int(total_files/2*threads) + 1)
                 thread_pool = ThreadPool(threads)
                 # Work on _core_fn (and give progressbar)
-                out += tqdm(thread_pool.imap_unordered(_core_fn, 
-                                                       filename, 
-                                                       chunksize=chunksize), 
+                out += tqdm(thread_pool.imap(_core_fn, 
+                                            filename,
+                                            chunksize=chunks), 
                             total=total_files)
                 # finish
                 thread_pool.close()
