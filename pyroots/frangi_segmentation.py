@@ -25,7 +25,7 @@ from warnings import warn
 
 def frangi_segmentation(image, colors, frangi_args, threshold_args,
                         color_args_1=None, color_args_2=None, color_args_3=None, 
-                        morphology_args_1=None, morphology_args_2, hollow_args=None, 
+                        morphology_args_1=None, morphology_args_2=None, hollow_args=None, 
                         fill_gaps_args=None, diameter_args=None, diameter_bins=None, 
                         image_name="image"):
     """
