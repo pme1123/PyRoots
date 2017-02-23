@@ -19,7 +19,7 @@ from pyroots.skeletonization import skeleton_with_distance
 from skimage import io, color, filters, morphology, img_as_ubyte, img_as_float
 from skimage import io
 from multiprocessing import Pool  
-from multiprocessing.dummy import Pool as ThreadPool
+#from multiprocessing.dummy import Pool as ThreadPool
 from warnings import warn   
 import cv2
 from time import strftime, sleep
@@ -88,7 +88,8 @@ def preprocessing_filter_loop(dir_in,
             if not os.path.exists(os.path.join(dir_out, subpath)):
                 os.mkdir(os.path.join(dir_out, subpath))
                 os.mkdir(os.path.join(dir_out, "DID NOT PASS", subpath))
-
+            
+            global _core_fn
             def _core_fn(filename):
                 if filename.endswith(extension_in):
                     path_in = os.path.join(path, filename)  # what's the image called and where is it?
@@ -129,13 +130,14 @@ def preprocessing_filter_loop(dir_in,
                                 io.imsave(path_out_FAIL, img)
                             print("DID NOT PASS: {}".format(os.path.join(subpath, filename)))
                 
-            thread_pool = ThreadPool(threads)
+            thread_pool = Pool(threads)
             # Work on _core_fn
             thread_pool.map(_core_fn, filename)
             # finish
             thread_pool.close()
             thread_pool.join()
-        
+            
+    del globals()[_core_fn]  # to keep things safe          
     return("Done")
     
 #################################################################################################
@@ -235,7 +237,7 @@ def preprocessing_actions_loop(dir_in,
                     correction = None
                     pass
             
-            
+            global _core_fn  # bad form for compatibility with Pool.map()
             def _core_fn(filename):
                 if filename.endswith(extension_in):
                     path_in = os.path.join(path, filename)  # what's the image called and where is it?
@@ -274,12 +276,14 @@ def preprocessing_actions_loop(dir_in,
                                 io.imsave(path_out_FAIL, img)
                             print("Something Failed: {}".format(os.path.join(subpath, filename)))
                 
-            thread_pool = ThreadPool(threads)
+            thread_pool = Pool(threads)
             # Work on _core_fn
             thread_pool.map(_core_fn, filename)
             # finish
             thread_pool.close()
             thread_pool.join()
+    
+    del globals()[_core_fn]  # to keep things safe  
         
     return("Done")
 
@@ -437,7 +441,8 @@ def frangi_image_loop(dir_in,
             if not os.path.exists(os.path.join(dir_out, subpath)):
                 os.mkdir(os.path.join(dir_out, subpath))
             
-            # What we'll do:        
+            # What we'll do:
+            global _core_fn  # bad form for Pool.map() compatibility        
             def _core_fn(filename):
                 if filename.endswith(extension_in):
                     # count progress.
@@ -503,11 +508,11 @@ def frangi_image_loop(dir_in,
             else:
                 sleep(1)  # to give everything time to  load
                 chunks = min(5, int(total_files/2*threads) + 1)
-                thread_pool = ThreadPool(threads)
+                thread_pool = Pool(threads)
                 # Work on _core_fn (and give progressbar)
-                out += tqdm(thread_pool.imap(_core_fn, 
-                                            filename,
-                                            chunksize=chunks), 
+                out += tqdm(thread_pool.imap_unordered(_core_fn, 
+                                                       filename,
+                                                       chunksize=chunks), 
                             total=total_files)
                 # finish
                 thread_pool.close()
@@ -515,5 +520,5 @@ def frangi_image_loop(dir_in,
             
     
     out = pd.concat([i for i in out])
-           
+    del globals()[_core_fn]  # to keep things safe       
     return(out)
