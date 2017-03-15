@@ -9,7 +9,7 @@ matplotlib
 pandas
 os
 multiprocessing
-cv2
+opencv-python
 colour-science
 time
 tqdm
