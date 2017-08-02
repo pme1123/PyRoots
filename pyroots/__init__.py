@@ -19,6 +19,6 @@ __all__ = ['noise_removal', 'dirt_removal', 'grayscale_filter', 'color_filter', 
 	   	   'img_split', 'ellipse_mask', 'equalize_exposure', '_arrays_mean', '_arrays_var', 'calc_exposure_correction', '_center_image', 'fill_gaps',
 	   	   'detect_motion_blur', 'calc_temperature_distance', 'correct_brightfield', 'register_bands', 'preprocessing_filters', 'preprocessing_actions',
 	   	   'multi_image_plot', 'random_blobs', 'tiff_splitter', 'band_viewer', '_zoom',
-	   	   'thresholding_thresholding', 'thresholding_image_loop',
+	   	   'thresholding_segmentation', 'thresholding_image_loop',
 	   	   'preprocessing_filter_loop', 'preprocessing_actions_loop', 'frangi_image_loop',
 	   	   'frangi_segmentation']
