@@ -16,161 +16,273 @@ import pandas as pd
 import pyroots as pr
 from skimage import io, color, filters
 
-def thresholding_segmentation(image, image_name, colorspace, analysis_bands,
-                              threshold_params, filtering_params,
-                              light_on_dark = False, mask = None,
-                              diameter_bins = None, optimize = False):
+def thresholding_segmentation(image,
+                              threshold_args,
+                              image_name='Default Image',
+                              colors='skip',
+                              contrast_kernel_size='skip',
+                              mask_args='skip',
+                              noise_removal_args='skip',
+                              morphology_filter_args='skip',
+                              fill_gaps_args='skip',
+                              lw_filter_args='skip',
+                              diam_filter_args='skip',
+                              diameter_bins=None,
+                              verbose=False):
+    #TODO: Test
     """
     Full analysis of an image for length of objects based on thresholding.
     Performs the following steps:
-    1. Colorspace conversion
-    2. Subsetting analysis bands
-    3. Adaptive thresholding
-    4. (optional: Edit source) combining thresholded bands
-    5. Filter objects by size, length:width ratio, and diameter
-    6. Summarizing final result by diameter class or the entire image
-    Note that parameters are tricky here. This is meant to be run with a series of
-    dictionaries where items have specific names. See individual functions, and
-    the example parameters, analysis_parameters.py.
+    1. Colorspace conversion and selecting analysis bands
+    2. Contrast enhancement
+    3. Adaptive thresholding bands to binary images
+    4. Combining multiplicatively (i.e. kept if `True` in all, if multiple bands)
+    5. Filter objects by size, length:width ratio, and diameter (all optional)
+    6. Smoothing (optional)
+    7. Measuring medial axis length and diameter along the length
+    8. Summarizing by diameter class or the entire image
 
-    This function is somewhat flexible, but you should edit/re-write it to suit
-    your own needs.
+    Methods that are optional are set as 'skip' for default. Most arguments require
+    dictionaries of arguments for the subfunctions. The easiest way to generate these
+    dictionaries is to use the thresholding-based segmentation notebook. See the pyroots
+    functions for more information.
 
     Parameters
     ----------
     image : array
-    	An RGB image for analysis
+    	An RGB or black and white image for analysis
+
+    threshold_args : list of dicts
+        Dictionaries contain options for adaptive thresholding. See skimage.filters.threshold_adaptive().
+        At minimum, requires 'block_size', for example, threshold_args = [{'block_size':101}].
+
     image_name : str
     	What do you want to call your image?
-    colorspace : str
-    	The colorspace to run the analysis in (ex. RGB, LAB, HSV). String.
-    analysis_bands : list
-    	Integers describing indicies of bands in the colorspace to threshold.
-    	ex for HSV, "H" = 0, "S" = 1, "V" = 2. Recommend choosing one band,
-    	otherwise modify this script.
-    light_on_dark : Are the objects dark objects on a light background? Default = False.
-    threshold_params : Options for adaptive thresholding. See
-        skimage.filters.threshold_adaptive(). Dictionary.
-    mask : array
-    	If want to analyze only part of an image, use a binary array such as
-    	made with ``pyroots.circle_mask``.
-    filtering_params : List
-    	Contains two two dictionaries:
-        	1. A size filter threshold for passing to pyroots.dirt_removal(), and a
-            length:width value for passing to pyroots.length_width_filter().
-        	2. Arguments for passing to pyroots.diameter_filter().
-    diameter_bins : List
-    	Float bin cutoffs for summarizing object length by diameter class.
-    	Defaults to ``None``, which returns total length and average diameter for
+
+    colors : dict
+        Currently only supports one colorspace, but you can choose multiple bands.
+    	A dictionary containing:
+        - colorspace: string.
+            Colorspace in which to run the analysis (ex. RGB, LAB, HSV). See
+            scikit-image documentation for all options.
+        - band: list of integers
+            Specifying which bands of `colorspace` on which to run the analysis
+            (ex. 2 in RGB gives Blue, 0 gives Red).
+        - dark_on_light: list of boolean
+            Are the objects dark objects on a light background? Length must match
+            length of `colors['band']`.
+        `skip` for a black and white image.
+
+    contrast_kernel_size : int or None
+        Dimension of kernel for adaptively enhancing contrast. Calls
+        `skimage.exposure.equalize_adapthist()`. If `None`, will use a default of
+        1/8 height by 1/8 width.
+
+    mask_args : dict
+    	Used for masking the image with an ellipse. Useful for photomicroscopy. See `pr.ellipse_mask`.
+
+    noise_removal_args : dict
+    	Smooths and despeckles the image, and also separates loosely connected objects for easier filtering.
+        Contains arguments for `pyroots.noise_removal()`.
+
+    morphology_filter_args : dict
+        Filters objects by shape, size, and solidity. See `pyroots.morphology_filter()`.
+
+    fill_gaps_args : dict
+        Removes small holes and gaps between objects, now that most noise is removed. See
+        `pyroots.fill_gaps()`.
+
+    lw_filter_args : dict
+        Removes objects based on medial axis length:mean width ratios. See `pyroots.length_width_filter()`.
+
+    diam_filter_args : dict
+        Removes entire objects or parts of objects based on diameters. See `pyroots.diameter_filter()`.
+
+    diameter_bins : list of float
+    	Bin cutoffs for summarizing object length by diameter class.
+    	Defaults to `None`, which returns total length and average diameter for
     	all objects in the image.
-    optimize : Bool
-    	Flag for whether to run the function in a more 'interactive' mode.
-        This causes the function to produce images at each step, for the purpose
-        of tweaking parameters. Default = False.
+
+    verbose : bool
+        Give feedback showing the step working on?
 
     Returns
     -------
-    In optimize mode, a series of plots showing output from individual steps of the
-    analysis, plus a pandas dataframe of geometry.
-    Otherwise, a list of four objects: 1) geometry dataframe; 2) analyzed objects;
+    A dictionary containing:
+        1. 'geometry' : a `pandas` dataframe describing either:
+            - image name, total length, mean diameter, and the number of objects (if `diameter_bins` is `None`)
+            - image name, length by diameter class, and diameter class (otherwise)
+        2. 'objects'  : a binary image of kept objects
+        3. 'length'   : a 2D image array of object medial axes with values indicating the length at that axis
+        4. 'diameter' : a 2D image array of object medial axes with values indicating either:
+            - the diameter at that pixel (if `diameter_bins` is `None`)
+            - the diameter bin to which a pixel belongs (otherwise)
     3) skeleton pixel lengths; 4) skeleton pixel diameters.
 
     See Also
     --------
-    analysis_parameters.py
+    For example parameter dictionaries, see example_thresholding_analysis_parameters.py.
 
     """
 
-    ###########################################
-    ####  convert colorspace and theshold  ####
-    ###########################################
-    if colorspace.lower() is not "rgb":
-        image = getattr(color, 'rgb2' + colorspace.lower())(image)
-    bands = pr.img_split(image)
+    # Housekeeping
+    ## count number of bands and make sure the items 'band' and 'dark_on_light' are lists
+    try:
+        nbands = len(colors['band'])
+    except:
+        colors['band'] = [colors['band']]
+        nbands = len(colors['band'])
+        pass
 
-    analysis_band = [bands[n] for n in analysis_bands]
+    try:
+        len(colors['dark_on_light'])
+    except:
+        colors['dark_on_light'] = [colors['dark_on_light']]
+        if nbands != len(colors['dark_on_light']):
+            raise ValueError("Number of items in `colors['dark_on_light']` doesn't\
+                             equal the number of bands in `colors['band']`!")
+        pass
 
-    threshold = [filters.threshold_adaptive(n, **threshold_params)
-                 for n in analysis_band
-                 ]
+    ## Count nubmer of dictionaries in threshold_args. Should equal number of bands. Make sure is list.
+    try:
+        len(threshold_args[0])
+    except:
+        threshold_args = [threshold_args]
+        if nbands != len(threshold_args):
+            raise ValueError("Number of dictionaries in `threshold_args` doesn't\
+                             equal the number of bands in `colors['band']`!")
+        pass
 
-    if light_on_dark is False:
-        threshold = [~n for n in threshold]
+    # Begin
+    ## Convert Colorspace, enhance contrast
+    try:  # detects if color=None
+        if colors['colorspace'].lower() != 'rgb':
+            working_image = getattr(color, "rgb2" + colors['colorspace'])(image)
+        else:
+            working_image = image.copy()
+        working_image = [img_split(working_image)[i] for i in colors['band']] # pull bands
 
+    except:  # for black and white
+        if colors is not 'skip':
+            raise ValueError("Your colors arguments are invalid. For black and white, set colors=None.")
+        working_image = image.copy()
+        pass
+    if verbose is True:
+        print("Analysis bands selected")
 
-    #############################################################
-    #### Insert equation here for combining binary threshold ####
-    ####              images of multiple bands               ####
-    #############################################################
-    if len(analysis_bands) is not 1:  # comment this out if using multiple bands
-    	raise ValueError("Make sure you identify how to combine these bands")
-#    threshold = threshold[1] * threshold[2]  # both g and b of rgb colorspace
+    try:
+        for i in range(nbands):
+            working_image[i] = exposure.equalize_adapthist(working_image[i],
+                                                           kernel_size=contrast_kernel_size)
+        working_image = [img_as_ubyte(i) for i in working_image]
+        if verbose is True:
+            print("Contrast enhanced")
+    except:
+        if contrast_kernel_size is not 'skip':
+            warn("Skipping contrast enhancement")
+        pass
 
-    # ensure the image is an array and not a list
-    threshold = threshold[0]
+    ## threshold
+    for i in range(nbands):
+        working_image[i] = working_image[i] > filters.threshold_local(working_image[i],
+                                                                      **threshold_args[i])
 
-    ##############################################################
-    ####   Apply mask to only analyze the interesting part    ####
-    ####                   of the image?                      ####
-    ##############################################################
+    for i in range(nbands):
+        if colors['dark_on_light'][i] is True:
+            working_image[i] = ~working_image[i]
 
-#    if mask[0]['form'] is "ellipse":
-#        img_mask = pr.circle_mask(threshold, **mask[1])
-#    threshold = threshold * img_mask  # apply the mask
+    ## Combine bands. As written, keeps all 'TRUE'
+    combined = working_image[0].copy()
+    for i in range(1, nbands):
+        combined = combined * working_image[i]
 
-    if mask is not None:
-    	threshold = threshold * mask
+    working_image = combined.copy()
+    if verbose is True:
+        print("Thresholding complete")
 
-    ##############################################################
-    ####  Remove noise, smooth, and clear extraneous objects  ####
-    ##############################################################
-    no_dirt = pr.dirt_removal(threshold, **filtering_params[0])
+    ## Mask, filtering, smoothing
+    try:
+        working_image = working_image * ellipse_mask(working_image, **mask_args)
+        if verbose is True:
+            print("Image masked")
+    except:
+        if mask_args is not 'skip':
+            warn("Skipping mask")
+    pass
 
-    raw_objects = pr.noise_removal(no_dirt, **filtering_params[1])
-        # can change the stringency
-        # of noise removal and smoothing by specifying different structure elements
-        # see source code (%psource pyroots.noise_removal in ipython)
+    try:
+        working_image = noise_removal(working_image, **noise_removal_args)
+        if verbose is True:
+            print("Smoothing and noise removal complete")
+    except:
+        if noise_removal_args is not 'skip':
+            warn("Skipping noise removal")
+        pass
 
-    # medial axis skeleton plus geometry calculations
-    skel_dict = pr.skeleton_with_distance(raw_objects)
+    try:
+        working_image = morphology_filter(working_image, **morphology_filter_args)
+        if verbose is True:
+            print("Morphology filtering complete")
+    except:
+        if morphology_filter_args is not 'skip':
+            warn("Skipping morphology filter")
+        pass
 
-    # filter objects by length:width ratio, and update objects
-    lw_dict = pr.length_width_filter(skel_dict, **filtering_params[2])
+    try:
+        working_image = fill_gaps(working_image, **fill_gaps_args)
+        if verbose is True:
+            print("Smoothing and gap filling complete")
+    except:
+        if fill_gaps_args is not 'skip':
+            warn("Skipping gap filling and smoothing")
+        pass
 
-    # filter by diameter
-    diam_dict = pr.diameter_filter(lw_dict, **filtering_params[3])
+    ## skeleton, length-width, diameter filters
+    skel_dict = skeleton_with_distance(working_image)
+    if verbose is True:
+        print("Skeletonization complete")
 
-    ##############################################################
-    #### Summarize the length and diameter data for the image ####
-    ##############################################################
+    try:
+        lw_dict = length_width_filter(skel_dict, **lw_filter_args)
+        if verbose is True:
+            print("Length:width filtering complete")
+    except:
+        lw_dict = skel_dict.copy()
+        if lw_filter_args is not 'skip':
+            warn("Skipping length-width filter")
+        pass
 
+    try:
+        diam_dict = diameter_filter(lw_dict, **diam_filter_args).copy()
+        if verbose is True:
+            print("Diameter filter complete")
+    except:
+        if diam_filter_args is not 'skip':
+            warn("Skipping diameter filter")
+        pass
+
+    ## Summarize
     if diameter_bins is None:
-        summary_df = pr.summarize_geometry(diam_dict['geometry'], image_name)
+        summary_df = summarize_geometry(skel_dict['geometry'], image_name)
 
     else:
-        diam_out, summary_df = pr.bin_by_diameter(diam_dict['length'],
-                                                  diam_dict['diameter'],
-                                                  diameter_bins,
-                                                  image_name)
+        diam_out, summary_df = bin_by_diameter(skel_dict['length'],
+                                               skel_dict['diameter'],
+                                               diameter_bins,
+                                               image_name)
+        skel_dict['diameter'] = diam_out
 
-    ################################################################
-    #### Draw images for setting parameters and troubleshooting ####
-    ################################################################
-    if optimize is True:
-        pr.multi_image_plot([image, bands[0], bands[1], bands[2]],
-                             ["Input", "Band 1", "Band 2", "Band 3"])
-        pr.multi_image_plot([threshold, no_dirt, raw_objects, lw_dict['objects']],
-                             ["Threshold", "Small Objects Removal", "Smoothing",
-                              "Length Width Filter"])
-        pr.multi_image_plot([diam_dict['objects'], diam_dict['diameter'], diam_dict['length']],
-                             ["Diameter Filter", "Diameter Skeleton",
-                              "Length Skeleton"])
-        return(summary_df)
+    out = {'geometry' : summary_df,
+           'objects'  : skel_dict['objects'],
+           'length'   : skel_dict['length'],
+           'diameter' : skel_dict['diameter']}
 
-    else:
-        return(summary_df, diam_dict['objects'], diam_dict['length'], diam_dict['diameter'])
+    if verbose is True:
+        print("Done")
 
-def image_loop(root_directory, image_extension, path_to_params, mask=None, save_images=False):
+    return(out)
+
+def thresholding_image_loop(root_directory, image_extension, path_to_params, mask=None, save_images=False):
     """
     Reference function to loop through images in a directory. As it is written, it returns
     a dataframe from "pyroots_analysis" and also writes images showing the objects analyzed.
