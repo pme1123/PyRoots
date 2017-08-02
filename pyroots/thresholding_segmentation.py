@@ -15,6 +15,7 @@ from PIL import Image
 import pandas as pd
 import pyroots as pr
 from skimage import io, color, filters
+from warnings import warn
 
 def thresholding_segmentation(image,
                               threshold_args,
