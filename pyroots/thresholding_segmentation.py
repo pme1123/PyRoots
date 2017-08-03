@@ -202,7 +202,7 @@ def thresholding_segmentation(image,
 
     ## Mask, filtering, smoothing
     try:
-        working_image = working_image * ellipse_mask(working_image, **mask_args)
+        working_image = working_image * draw_mask(working_image, **mask_args)
         if verbose is True:
             print("Image masked")
     except:

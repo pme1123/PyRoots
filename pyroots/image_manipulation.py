@@ -319,10 +319,13 @@ def img_split(img):
 #########################################################################################################################
 #########################################################################################################################
 
-def ellipse_mask(img, percentage_x=100, percentage_y=100, offset_x=0, offset_y=0, rotation=0):
+def draw_mask(img, percentage_x=100, percentage_y=100, offset_x=0, offset_y=0, rotation=0, rectangle=True):
     """
-    Convenience wrapper for ``skimage.draw.ellipse``. Draws an ellipse at (``center`` +
-    ``offset``) of ``img`` with major and minor axes as a percentage of ``img.shape``.
+    Convenience wrapper for `skimage.draw.ellipse` and `skimage.draw.polygon`.
+    Draws an ellipse at (center + ``offset``) of ``img`` with major and
+    minor axes as a percentage of ``img.shape``. Alternatively, draws a rectangle
+    centered at the offset that covers the given percentage of the height and width
+    of the image.
 
     Parameters
     ----------
@@ -333,13 +336,15 @@ def ellipse_mask(img, percentage_x=100, percentage_y=100, offset_x=0, offset_y=0
         What percentage of the x-dimension of ``img`` do you want the x-axis to cover? Can
         be greater than zero
     percentage_y : float
-    offset_x : int
-        From the middle, how many pixels in the x direction do you want the center of the
+    offset_x : float
+        From the middle, what percentage of the width of the picture do you want the center of the
         ellipse to be? Positive is left.
-    offset_y : int
+    offset_y : float
         Positive is up.
     rotation : float
         In [-pi, pi]. See ``skimage.draw.ellipse''
+    rectangel : bool
+        Make a rectangular mask instead of an elliptical mask?
 
     Returns
     -------
@@ -347,18 +352,41 @@ def ellipse_mask(img, percentage_x=100, percentage_y=100, offset_x=0, offset_y=0
 
     References
     ----------
-    See source and examples for ``skimage.draw.ellipse``
+    See source and examples for `skimage.draw.ellipse` and `skimage.draw.polygon`.
 
     """
+    ydim, xdim = img.shape
+    mask = np.zeros((ydim, xdim))
 
-    x_rad = np.floor((img.shape[0]/2) * (percentage_x/100))
-    y_rad = np.floor((img.shape[1]/2) * (percentage_y/100))
+    # Convert percentages to fractions
+    offset_x = (xdim * offset_x/100)
+    offset_y = (ydim * offset_y/100)
+    percentage_x = percentage_x/100
+    percentage_y = percentage_y/100
 
-    x_center = img.shape[0]//2 + offset_x
-    y_center = img.shape[1]//2 - offset_y
+    if rectangle is False:
+        x_rad = np.floor((img.shape[1]/2) * percentage_x)
+        y_rad = np.floor((img.shape[0]/2) * percentage_y)
 
-    mask = np.zeros(img.shape)
-    [x, y] = draw.ellipse(y_center, x_center, y_rad, x_rad, shape = img.shape)
+        x_center = img.shape[1]//2 + offset_x
+        y_center = img.shape[0]//2 - offset_y
+
+
+        [x, y] = draw.ellipse(y_center, x_center, y_rad, x_rad, shape = img.shape, rotation=rotation)
+
+    else:
+        ysub = ydim * (1 - percentage_y)
+        y1 = max(ysub/2 - offset_y, 0)
+        y2 = min(ydim - ysub/2 - offset_y, ydim)
+        r_coords = np.array([y1, y1, y2, y2, y1])
+
+        xsub = xdim * (1 - percentage_x)
+        x1 = max(xsub/2 + offset_x,0)
+        x2 = min(xdim - xsub/2 + offset_x, xdim)
+        c_coords = np.array([x1, x2, x2, x1, x1])
+
+        x, y = draw.polygon(r_coords, c_coords)
+
     mask[x, y] = 1
 
     return(mask)
