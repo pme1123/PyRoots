@@ -5,6 +5,7 @@ Batch processing functions:
 
 """
 
+#TODO: Test batch image loop with frangi method.
 
 import os
 import numpy as np
