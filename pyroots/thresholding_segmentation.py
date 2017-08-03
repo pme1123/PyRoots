@@ -13,8 +13,8 @@ TODO: Test multi_image_loop
 import os
 from PIL import Image
 import pandas as pd
-import pyroots as pr
-from skimage import io, color, filters
+from pyroots import *
+from skimage import io, color, filters, exposure, img_as_ubyte
 from warnings import warn
 
 def thresholding_segmentation(image,
@@ -162,7 +162,6 @@ def thresholding_segmentation(image,
         else:
             working_image = image.copy()
         working_image = [img_split(working_image)[i] for i in colors['band']] # pull bands
-
     except:  # for black and white
         if colors is not 'skip':
             raise ValueError("Your colors arguments are invalid. For black and white, set colors=None.")
@@ -173,9 +172,9 @@ def thresholding_segmentation(image,
 
     try:
         for i in range(nbands):
-            working_image[i] = exposure.equalize_adapthist(working_image[i],
-                                                           kernel_size=contrast_kernel_size)
-        working_image = [img_as_ubyte(i) for i in working_image]
+            temp = exposure.equalize_adapthist(working_image[i],
+                                               kernel_size = contrast_kernel_size)
+            working_image[i] = img_as_ubyte(temp)
         if verbose is True:
             print("Contrast enhanced")
     except:
