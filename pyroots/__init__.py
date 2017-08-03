@@ -20,5 +20,5 @@ __all__ = ['noise_removal', 'dirt_removal', 'grayscale_filter', 'color_filter', 
 	   	   'detect_motion_blur', 'calc_temperature_distance', 'correct_brightfield', 'register_bands', 'preprocessing_filters', 'preprocessing_actions',
 	   	   'multi_image_plot', 'random_blobs', 'tiff_splitter', 'band_viewer', '_zoom',
 	   	   'thresholding_segmentation',
-	   	   'preprocessing_filter_loop', 'preprocessing_actions_loop', 'frangi_image_loop', 'pyroots_batch_loop'
+	   	   'preprocessing_filter_loop', 'preprocessing_actions_loop', 'frangi_image_loop', 'pyroots_batch_loop',
 	   	   'frangi_segmentation']
