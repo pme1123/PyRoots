@@ -1,0 +1,10 @@
+colors = {'band': [0, 2], 'dark_on_light': [False, True], 'colorspace': 'rgb'}
+contrast_kernel_size = 500
+threshold_args = [{'offset': -3, 'block_size': 151, 'param': 25.0}, {'offset': 3, 'block_size': 151, 'param': 25.0}]
+mask_args = {'rotation': 0, 'percentage_y': 89.5, 'offset_x': 1.5, 'percentage_x': 94, 'rectangle': True, 'offset_y': 2}
+noise_removal_args = {'radius_2': 2, 'median_iterations': 3, 'radius_1': 0}
+morphology_filter_args = {'loose_eccentricity': 0.5, 'strict_solidity': 0.6, 'min_size': 0, 'loose_solidity': 0.8, 'strict_eccentricity': 0.95, 'min_length': 0}
+fill_gaps_args = {'median_radius': 1.6, 'min_hole_size': 100, 'closing_radius': 3}
+lw_filter_args = {'threshold': 5}
+diam_filter_args = {'max_diameter': 12, 'pixel_level': False, 'max_percentile': 100, 'min_diameter': 4.5, 'min_percentile': 100}
+diameter_bins = [3, 5, 10, 20]
