@@ -164,7 +164,7 @@ def thresholding_segmentation(image,
             pass
         
         # pull bands
-        working_image = [pr.img_split(working_image)[i] for i in colors['band']]
+        working_image = [img_split(working_image)[i] for i in colors['band']]
         
     
     else:  # it's a black and white image
