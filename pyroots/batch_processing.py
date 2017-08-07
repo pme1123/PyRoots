@@ -672,9 +672,10 @@ def pyroots_batch_loop(dir_in,
 
         except:
             if os.path.exists(params):
-                raise ValueError("Couldn't load params file. Try checking it for words like 'array' or \
-                                 'uint8' that need to be loaded with numpy and add a line to load these \
-                                 functions/modules at the top of your script.... Or edit source.")
+                raise ValueError(
+                """Couldn't load params file. Try checking it for words like 'array' or 
+                'uint8' that need to be loaded with numpy and add a line to load these 
+                functions/modules at the top of your script.... Or edit source.""")
             else:
                 raise ValueError("Couldn't find params file at {}".format(params))
 
@@ -806,12 +807,14 @@ def pyroots_batch_loop(dir_in,
                                                                          )
 
                             elif method == 'custom':
-                                raise ValueError("No custom function defined. Define it in pyroots/batch_processing.py and \
-                                                 restart your python session (and comment out this error message)")
+                                raise ValueError(
+                                """No custom function defined. Define it in pyroots/batch_processing.py and 
+                                restart your python session (and comment out this error message)""")
 
                             else:
-                                raise ValueError("Didn't understand what method you wanted. Options are 'frangi', \
-                                                 'thresholding', and 'custom'")
+                                raise ValueError(
+                                """Didn't understand what method you wanted. Options are 'frangi', 
+                                'thresholding', and 'custom'""")
 
 
                             #save images?
