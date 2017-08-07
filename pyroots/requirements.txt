@@ -4,7 +4,7 @@
 #
 numpy
 scipy
-skimage
+scikit-image
 matplotlib
 pandas
 os
