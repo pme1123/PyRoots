@@ -582,6 +582,7 @@ def pyroots_batch_loop(dir_in,
                        extension_in,
                        method,
                        dir_out=None,
+                       extension_out='.png',
                        table_out=None,
                        table_overwrite=False,
                        params=None,
@@ -603,6 +604,8 @@ def pyroots_batch_loop(dir_in,
         editing the source code.
     dir_out : str or `None`
         Full path to write images to. If `None` and `save_images=True`, defaults to "Pyroots Analyzed" in `dir_in`.
+    extension_out : str
+        Image type for output images. .png is default, as it is both space efficient and lossless. 
     table_out : str or `None`
         Full path to which to write the results, including the filename. If `None`, defaults to "Pyroots Results.txt" in `dir_in`.
     table_overwrite : bool
@@ -610,8 +613,6 @@ def pyroots_batch_loop(dir_in,
     params : str
         Path + filename for parameters file for `pyroots.frangi_segmentation`. If None (default), will
         print a list of subpaths + images that would be processed, with a warning.
-    mask : ndarray
-        Binary array of the same dimensions as each image, with 1 being the part of the image to analyze.
     save_images : bool
         Do you want to save images of the objects?
     threads : int
@@ -758,7 +759,7 @@ def pyroots_batch_loop(dir_in,
                     path_in = os.path.join(path, filename)
                     subpath_in = os.path.join(subpath, filename) # for printing purposes
                     # Where to write the output image?
-                    filename_out = os.path.splitext(filename)[0] + ".png"
+                    filename_out = os.path.splitext(filename)[0] + extension_out
                     path_out = os.path.join(dir_out, subpath, filename_out)
 
                     if os.path.exists(path_out): #skip
