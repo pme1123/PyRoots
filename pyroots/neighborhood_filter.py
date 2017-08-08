@@ -19,7 +19,7 @@ Supporting Functions:
 from scipy import ndimage
 import numpy as np
 from skimage import img_as_float, measure, morphology, color
-from pyroots import img_split
+from pyroots import *
 
 def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=4, colorspace='rgb', band=2):
     """
