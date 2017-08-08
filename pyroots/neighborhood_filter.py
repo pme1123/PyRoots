@@ -18,107 +18,76 @@ Supporting Functions:
 
 from scipy import ndimage
 import numpy as np
-from skimage import img_as_float, measure, morphology
+from skimage import img_as_float, measure, morphology, color
+from pyroots import img_split
 
-def neighborhood_filter(pyroots_dictionary, 
-                        band, 
-                        max_dist=0.5, 
-                        gap=5, 
-                        edge_width=5, 
-                        percentiles=(25, 75), 
-                        cum_area=67, 
-                        return_distance=False):
+def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=4, colorspace='rgb', band=2):
     """
-    Filter objects based on the pixels near them. Looks at the values of 
-    pixels on, say, the left side of an object (the "left edge neighborhood")
-    and compares them to those in the right edge neighborhood. If the 
-    difference is greater than `max_dist`, the object is rejected.
+    Calculate difference between values on either side of a long, skinny object.
     
-    Because this filter works on individual objects in a binary image, it is 
-    slow for images with many objects.
+    For pyroots, the application is differentiating hyphae or roots from the edges
+    of particles. These edges sometimes pass through other filters. True objects 
+    (roots and hyphae) should have more or less the same value on either side. Edges
+    of larger objects, in comparision, should have a higher value on one side than the other.
     
-
+    This function compares the values on the left and right sides, and upper and lower sides,
+    of candidate objects in a grayscale image or band. Based on this difference, the candidate
+    object is flagged as real or spurrious.
+    
     Parameters
     ----------
-    pyroots_dictionary: dict
-        Named objects returned from `pyroots.skeleton_with_distance`. 
-        `"objects"` and `"diameter"` are essential.
-    band: 2darray
-        Grayscale image or band. Dimensions should be the same as `"objects"` 
-        in `pyroots_dictionary`
-    max_dist: [0, 1]
-        Maximum difference between values calculated for each edge 
-        neighborhood. Note that `band` is converted to float64. 
-    gap: int
-        Size of gap between the object and the edge neighborhoods, in pixels. 
-        See Notes.
-    edge_width: int
-        Width of edge neighborhoods, in pixels. This is the region of interest 
-        for this function. See Notes
-    percentiles: tuple or list [0, 100]
-        Lower and upper bounds of percentiles used to calculate the mean value 
-        of each edge neighborhood. See Notes.
-    cum_area: float [0, 100]
-        Only calculate distances between the minimum set of neighborhoods that 
-        total this percentage of the total area of neighborhoods. Effectively 
-        removes small neighborhoods that might be outliers and falsely eliminate 
-        candidate objects later on. 
-    return_distance: bool
-        Return a list of max distances for each object? 
-    
+    image : array
+        1-band, grayscale image, or RGB color image.
+    objects : array
+        binary array of candidate objects.
+    max_diff : float [0,1]
+        Maximum difference between values in `image` on each side of the candidate objects 
+        in `objects`. Default = 0.1
+    gap : int
+        Number of pixels *beyond* each object to start measuring the neighborhood. The width
+        of region between the object and the neighborhood. Useful for objects that may not fully
+        capture the true object underneath. Default = 4.
+    neighborhood_depth : int
+        Number of pixels deep that the neighborhood should be. In intervals of 2. Default = 4.
+    colorspace : float
+        For accessing other colorspaces than RGB. Used to convert a color image to HSV, LAB, etc.
+        See `skimage.color`. Ignored if given a 1-band image.
+    band : int [0,2]
+        Band index for colorspace. Ex. in RGB R=0, G=1, B=2. Ignored if `image` is 1-band. 
+        
     Returns
     -------
-    An updated pyroots_dictionary
-    
-    *optional* an ndarray of labelled edge neighborhoods from the original 
-    objects. 
+    A binary array of filtered objects
         
-    Notes
-    -----
-    Images are converted to float64 before analysis. Therefore, distances 
-    are bound from [0, 1]. 
     
-    The algorithm works as such:
-    1. Edge neighborhoods are identified for each object as such: First, the 
-    object is dialated by (`gap + edge_width`) pixels. The skeleton is then 
-    extended to the edge of the dialated object. Finally, the gap, extended 
-    skeleton, and original objects are removed from the fully dialated object. 
-    
-    2. Each edge neighborhood receives a value, the middle percentiles of pixel 
-    values within each edge neighborhood. The middle percentiles are bound by 
-    `percentiles`, with the default being the middle 50% (25, 75). 
-    
-    3. Many objects have multiple edge neighborhoods. In this case, a square 
-    distance matrix is calculated between each, where each cell i, j corresponds 
-    to the absolute value of the difference between edge neighborhoods i and j. 
-    
-    4. If any value in the distance matrix is greater than `max_dist`, the object 
-    is rejected.
     """
-    # housekeeping
-    if edge_width < 2:
-        edge_width = 2
-        print("WARNING: Edge width must be >= 2 for proper functioning. \
-            Raising to 2")
+    if len(image.shape) == 3:
+        if colors['colorspace'].lower() != 'rgb':
+            image = getattr(color, "rgb2" + colorspace])(image)
+        image = img_split(image)[band]
+        
+    image = img_as_float(image)
+    its = int((neighborhood_depth+2)/2)
+    gap = int(gap)
+    total_dilation = 2*its
+    dims = image.shape
     
-    band = img_as_float(band)
-    
-    # working arrays
-    img = pyroots_dictionary["objects"]  # binary array of candidate objects
-    dist = pyroots_dictionary["diameter"] / 2  # skeleton diameter --> radius
-    
-    # maximum distance of dilation
-    total_dilation = gap + edge_width
-    dims = img.shape
-    
-    # prepare img
-    labels, labels_ls = ndimage.label(img)
+
+    # neighborhood expansion kernels
+    kernel_ls = [np.array([[0, 0, 0, 0, 0], [1, 1, 1, 0, 0], [0, 0, 0, 0, 0]]),      # left
+                 np.array([[0, 0, 0, 0, 0], [0, 0, 1, 1, 1], [0, 0, 0, 0, 0]]),      # right
+                 np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 0, 0], [0, 0, 0]]),  # up
+                 np.array([[0, 0, 0], [0, 0, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]])   # down
+                ]
+
+    labels, labels_ls = ndimage.label(objects)
     props = measure.regionprops(labels)
-    
-    test = [False] * (labels_ls + 1)
-    mx = [0] * (labels_ls + 1)
-    
+
+    decision_ls = [False]
     for i in range(1, labels_ls+1):
+        ###############
+        #### Slice ####
+        ###############
         # Bounds of slice to only the object of interest
         # include a gap. Stay within bounds of image.
         a, b, c, d = props[i-1].bbox
@@ -128,298 +97,54 @@ def neighborhood_filter(pyroots_dictionary,
         d = min(d + total_dilation, dims[0])
         
         # slice
-        temp_img = labels[a:c, b:d] == i
-        temp_dist = dist[a:c, b:d] * temp_img
-        temp_skel = temp_dist > 0
-        temp_band = band[a:c, b:d]
+        obj_slice = labels[a:c, b:d] == i
+        img_slice = image[a:c, b:d]
+#         plt.imshow(~obj_slice * img_slice)
         
-        # find neighborhoods
-        locs = _local_neighborhoods(temp_img, temp_skel, temp_dist, 
-                                    gap, edge_width)
+        ########################
+        ### Local expansion ####
+        ########################
+        expanded = ~morphology.binary_dilation(obj_slice, morphology.disk(gap))
+
+        nb_ls = []
+        for k in range(4):
+            t = obj_slice.copy()
+            for i in range(its):
+                t = ndimage.convolve(t, kernel_ls[k])
+            nb_ls.append(t * expanded)
+
+        ###############################
+        #### Select largest object ####
+        ###############################
+        for k in range(len(nb_ls)):
+            nb_labels, nb_labels_ls = ndimage.label(nb_ls[k])
+            nb_areas = [0] + [i['area'] for i in measure.regionprops(nb_labels)]  # regionprops skips index 0, annoyingly
+            nb_areas = nb_areas == max(nb_areas)  # sometimes (rarely) more than one subregion will have the same (max) area.
+            nb_ls[k] = nb_areas[nb_labels]
+
+        #######################################
+        #### Find values of largest object ####
+        #######################################
+        median = []
+        for k in range(len(nb_ls)):
+            masked = np.ma.masked_array(img_slice, ~nb_ls[k]).compressed()
+            median.append(np.percentile(masked, 0.5))
         
-        # calculate distances
-        dist_mat = _neighborhood_value_distances(locs, temp_band, percentiles, cum_area)
+        ###############################################
+        #### Calc difference (left-right, up-down) ####
+        ###############################################
+        diffs = [np.abs(median[0] - median[1]),
+                 np.abs(median[2]- median[3])]
+        diffs = [i > max_diff for i in diffs] 
         
-        # Does the object meet criteria?
-        mx[i] = dist_mat.max()
-        test[i] = dist_mat.max() < max_dist
+        ###################################
+        #### Test if exceeds threshold ####
+        ###################################
+        if sum(diffs) > 0:
+            decision_ls.append(False)
+        else:
+            decision_ls.append(True)
     
-    # Update objects
-    objects_out = np.array(test)[labels]
-    
-    # Update geometry
-    test[0] = True  # 0 is always kept in geometry dataframe
-    geometry_out = pyroots_dictionary["geometry"][test]
-    
-    out = {"objects"  : objects_out,
-           "diameter" : pyroots_dictionary["diameter"] * objects_out,
-           "length"   : pyroots_dictionary["length"] * objects_out,
-           "geometry" : geometry_out}
-    
-    if return_distance == True:
-        out = [out, mx]
+    out = np.array(decision_ls)[labels]
     
     return(out)
-
-
-
-def _skeleton_endpoints(skeleton):
-    """
-    Find the end points of medial axis skeletons
-    
-    Parameters
-    ----------
-    skeleton: ndarray
-        binary medial axis image
-    
-    Returns
-    -------
-    A binary ndarray showing the endpoints of skeletons
-    
-    """
-    
-    end_points = ndimage.convolve(1*skeleton, np.ones((3,3))) == 2
-    end_points = end_points * skeleton
-    return(end_points)
-    
-    
-   
-def _find_orientation(skeleton, endpoints):
-    """
-    Determine the orientation of medial axis skeleton endpoints
-    
-    Parameters
-    ----------
-    skeleton: ndarray
-        binary medial axis image
-    endpoints: ndarray
-        binary image identifying endpoints of the medial axis
-        
-    Returns
-    -------
-    A list of 3x3 binary arrays that act as structuring elements to extend a
-    skeleton along its orientation at each endpoint. Order is determined by
-    `scipy.ndimage.label`. 
-    
-    """
-    skeleton = 1*skeleton
-    endpoints = 1*endpoints
-    
-    # custom structure recognizes endpoints of skeletons of length=2 as discrete
-    labels, labels_ls = ndimage.label(endpoints, structure=[[0, 0, 0], 
-                                                            [0, 1, 0], 
-                                                            [0, 0, 0]]) 
-    
-    out = [np.zeros((3,3))]
-    for i in range(1, labels_ls + 1):
-        # subset end point
-        temp = labels == i
-        
-        # dilate to kernel size.
-        orientation = morphology.binary_dilation(temp, np.ones((3,3)))
-        # extract kernel
-        orientation = np.ma.masked_array(skeleton, ~orientation).compressed()
-        
-        # rotate 180 degrees for functionality
-        x = len(orientation)-1
-        orientation = [orientation[x-j] for j in range(x+1)]
-        orientation = np.reshape(orientation, (3, 3))
-        
-        # add to list
-        out.append(orientation)
-    return(out)
-    
-
-
-def _extend_skeleton_to_edges(objects,
-                              skeleton,
-                              endpoints,
-                              kernels,
-                              lengths):
-    """
-    Extends `skeleton` from endpoints to edges of `objects` or by `lengths` pixels,
-    whichever is shorter.
-    
-    Parameters
-    ----------
-    objects: ndarray
-        binary image of candidate objects
-    skeleton: ndarray
-        binary image of medial axis of `objects`
-    endpoints: ndarray
-        binary image of endpoints of `skeleton`
-    kernels: list of ndarrays
-        denote orientation of skeleton at each `endpoints`
-    lengths: list of int
-        denote number of pixels to extend  of objects at each `endpoints`
-    
-    Returns
-    -------
-    A binary ndarray of the skeleton, extended.
-    
-    """
-
-    # custom structure identifies endpoints of objects containing 2 pixels
-    labels, labels_ls = ndimage.label(endpoints, structure = [[0, 0, 0], 
-                                                              [0, 1, 0], 
-                                                              [0, 0, 0]])
-    
-    out = np.zeros(objects.shape)
-    for i in range(1, labels_ls+1):
-        # subset
-        temp = 1*labels == i
-        
-        # extend
-        times = int(lengths[i-1]) + 2
-        for j in range(1, times):
-            temp = ndimage.convolve(temp, kernels[i])
-            out += temp
-    
-    out += skeleton
-    out = out > 0
-    out = out * objects
-    
-    return(out)
-    
-
-
-def _local_neighborhoods(binary_image, 
-                         skeleton, 
-                         distance, 
-                         gap=0, 
-                         edge_width=2):
-    """
-    Identify neighboring areas of candidate objects, separated to denote each side.
-    
-    Parameters
-    ----------
-    binary_image: ndarray
-        binary candidate objects image
-    skeleton: ndarray
-        binary medial axis of objects in `binary_image`
-    distance: ndarray
-        like `skeleton`, but with each pixel value the radius of the object
-    gap: int
-        Number of pixels space to leave between neighborhoods and objects
-    edge_width: int
-        Number of pixels wide to make the neighborhoods
-    
-    """
-    
-    if edge_width < 2:
-        edge_width = 2
-        print("WARNING: Edge width must be >= 2 for proper \
-            functioning. Raising to 2")
-
-    
-    # find end points
-    endpoints = _skeleton_endpoints(skeleton)
-    
-    # find orientations
-    orientations = _find_orientation(skeleton, endpoints)
-    
-    # find necessary extension lengths
-    extension_lengths = np.ma.masked_array(distance, endpoints==0).compressed()
-    extension_lengths = extension_lengths + gap + edge_width + 1  
-        # for good measure. Shouldn't cause problems. 
-    
-    # dialate original image to edges (over gap)
-    gap = morphology.binary_dilation(binary_image, 
-                                     selem=morphology.disk(gap))
-    dialated = morphology.binary_dilation(gap, 
-                                          selem=morphology.disk(edge_width))
-    
-    # extend the skeleton
-    extended_skel = _extend_skeleton_to_edges(dialated, skeleton, 
-                                              endpoints, orientations,
-                                              extension_lengths)
-    
-    
-    out = dialated * ~gap * ~extended_skel
-    
-    return(out)
-
-
-
-def _neighborhood_value_distances(local_neighborhoods,
-                                  grayscale_image,
-                                  percentiles=(25, 75),
-                                  cum_area=67):
-    """
-    Calculate the distance between neighborhoods in terms of pixel values of a
-    corresponding grayscale image.
-    
-    Parameters
-    ----------
-    local_neighborhoods: binary ndarray
-        Edges segmented by _local_neighborhoods, showing pixels along each 
-        side of candidate objects
-    grayscale_image: ndarray
-        Band or grayscale image from which to draw values.
-    percentiles: tuple of float [0, 100]
-        Lower and upper percentiles to use when calculating the mean. 
-        This approach reduces susceptibility to both outliers and bimodal
-        distributions with unused values in the middle. 
-    cum_area: float [0, 100]
-        Only calculate distances between the minimum set of neighborhoods 
-        that total this percentage of the total area of neighborhoods. 
-        Effectively removes small neighborhoods that might be outliers
-        and falsely eliminate candidate objects later on. 
-    
-    Returns
-    -------
-    A square distance matrix of differences in 'mean' pixel values between 
-    individual neighborhoods in `local_neighborhoods`
-    
-    """
-    
-    grayscale_image = img_as_float(grayscale_image)
-    
-    # Subset the cumulative sum of 66% of total
-    # label and sum each area
-    labels, labels_ls = ndimage.label(local_neighborhoods)
-    total_area = np.sum(local_neighborhoods)
-    part_areas = ndimage.sum(local_neighborhoods, labels, index=range(labels_ls+1))
-    
-    # Accumulate 66% of total in order from largest to smallest areas
-    sorted_areas = np.sort(part_areas)[::-1]
-    i = j = 0
-    while i < total_area*(cum_area/100):
-        i += sorted_areas[j]
-        j += 1
-
-    new_neighborhoods = [i in sorted_areas[:j] for i in part_areas]
-    new_neighborhoods = np.array(new_neighborhoods)[labels] > 0
-    
-    # Find mean values of each object
-    labels, labels_ls = ndimage.label(new_neighborhoods)
-    if labels_ls > 1: # need more than one object
-
-        mean_value = []
-        for i in range(1, labels_ls + 1):
-            temp = labels==i
-            # pull initial values
-            vals = np.ma.masked_array(grayscale_image, ~temp).compressed()
-
-            # calculate thresholds of these values
-            low = np.percentile(vals, percentiles[0])
-            high = np.percentile(vals, percentiles[1])
-
-            # subset initial values
-            low = vals >= low
-            high = vals <= high
-            temp = low * high
-            avg = np.ma.masked_array(vals, ~temp).compressed()
-            mean_value.append(np.mean(avg))
-
-        # distances. Returns a square distance, which shouldn't matter
-        dist = np.array([i - mean_value for i in mean_value])
-        dist = np.abs(dist)
-    
-    else:
-        dist = np.array(np.NaN)
-    
-    return(dist)
-
-
-
