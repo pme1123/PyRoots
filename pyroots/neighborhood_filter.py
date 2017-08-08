@@ -2,7 +2,7 @@
 
 """
 Author: @pme1123
-Created: Mar 23rd, 2017
+Created: August 6th, 2017
 
 
 Contents:
@@ -37,12 +37,13 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
     Parameters
     ----------
     image : array
-        1-band, grayscale image, or RGB color image.
+        1-band, grayscale image, or RGB color image. Converted to float automatically. 
     objects : array
         binary array of candidate objects.
     max_diff : float [0,1]
         Maximum difference between values in `image` on each side of the candidate objects 
-        in `objects`. Default = 0.1
+        in `objects`. Note the value range, as all `image` are converted to float values. 
+        Default = 0.1
     gap : int
         Number of pixels *beyond* each object to start measuring the neighborhood. The width
         of region between the object and the neighborhood. Useful for objects that may not fully
@@ -62,8 +63,8 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
     
     """
     if len(image.shape) == 3:
-        if colors['colorspace'].lower() != 'rgb':
-            image = getattr(color, "rgb2" + colorspace])(image)
+        if colorspace.lower() != 'rgb':
+            image = getattr(color, "rgb2" + colorspace)(image)
         image = img_split(image)[band]
         
     image = img_as_float(image)
