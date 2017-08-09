@@ -1,5 +1,7 @@
 /pyroots/__pycache__/
-/pyroots/sample_images/Pyroots\ Analyzed/
-/Test\ Scripts/Scratch\ Notebooks/
-/Test\ Scripts/.ipynb_checkpoints/
+/pyroots/sample_images/
+/Test\ Scripts/
 /Example\ Images/
+/Notebooks\ for\ Parameterization/.ipy*
+.gitignore
+
