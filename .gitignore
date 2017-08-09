@@ -2,6 +2,6 @@
 /pyroots/sample_images/
 /Test\ Scripts/
 /Example\ Images/
-/Notebooks\ for\ Parameterization/.ipy*
+/Notebooks\ for\ Parameterization
 .gitignore
 
