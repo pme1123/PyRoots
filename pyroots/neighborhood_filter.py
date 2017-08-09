@@ -7,13 +7,6 @@ Created: August 6th, 2017
 
 Contents:
 neighborhod_filter - Filters candidate objects based on pixels near them
-
-Supporting Functions:
-*_skeleton_endpoints - finds endpoints of medial axis skeletons
-*_find_orientation - determines the orientation of the medial axis at the endpoints
-*_extend_skeleton_to_edges - extend skeleton from endpoints along orientation to the edge of an object.
-*_local_neighborhoods - identifies areas flanking candidate objects
-*_neighborhood_value_distances - calculate distance of pixel values in different edge neighborhoods. 
 """
 
 from scipy import ndimage
