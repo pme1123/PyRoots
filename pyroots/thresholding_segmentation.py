@@ -282,7 +282,7 @@ def thresholding_segmentation(image,
         pass
 
     ## Summarize
-    if diameter_bins is None:
+    if diameter_bins is None or diameter_bins is 'skip':
         summary_df = summarize_geometry(skel_dict['geometry'], image_name)
 
     else:
