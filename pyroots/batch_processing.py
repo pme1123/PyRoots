@@ -704,7 +704,7 @@ def pyroots_batch_loop(dir_in,
 
 
     # initiate the new table
-    if diameter_bins is None or 'skip':
+    if diameter_bins is None or diameter_bins is 'skip':
         df_out = pd.DataFrame(columns=("Time", "ImageName", "Length", "NObjects", "MeanDiam"))  # for concatenating purposes
         ncol = 5
     else:
@@ -767,74 +767,74 @@ def pyroots_batch_loop(dir_in,
                         print("\nALREADY ANALYZED: {}. Skipping...\n".format(subpath_in))
 
                     else: #(try to) do it
-#                        try:
-                        img = io.imread(path_in)  # load image
-                        image_name=os.path.join(subpath, filename)
+                        try:
+                            img = io.imread(path_in)  # load image
+                            image_name=os.path.join(subpath, filename)
 
-                        if len(img.shape) != 3:
-                            if len(colors) == 3:
-                                print("\n{} is not a color image! Skipping...\n".format(subpath_in))
+                            if len(img.shape) != 3:
+                                if len(colors) == 3:
+                                    print("\n{} is not a color image! Skipping...\n".format(subpath_in))
 
-                        if method == 'frangi':
-                            objects_dict = frangi_segmentation(img, colors,
-                                                               frangi_args,
-                                                               threshold_args,
-                                                               color_args_1,
-                                                               color_args_2,
-                                                               color_args_3,
-                                                               morphology_args_1,
-                                                               morphology_args_2,
-                                                               hollow_args,
-                                                               fill_gaps_args,
-                                                               diameter_args,
-                                                               diameter_bins,
-                                                               image_name=image_name)
+                            if method == 'frangi':
+                                objects_dict = frangi_segmentation(img, colors,
+                                                                   frangi_args,
+                                                                   threshold_args,
+                                                                   color_args_1,
+                                                                   color_args_2,
+                                                                   color_args_3,
+                                                                   morphology_args_1,
+                                                                   morphology_args_2,
+                                                                   hollow_args,
+                                                                   fill_gaps_args,
+                                                                   diameter_args,
+                                                                   diameter_bins,
+                                                                   image_name=image_name)
 
-                        elif method == 'thresholding':
-                            objects_dict = thresholding_segmentation(img,
-                                                                     threshold_args,
-                                                                     image_name,
-                                                                     colors,
-                                                                     contrast_kernel_size,
-                                                                     mask_args,
-                                                                     noise_removal_args,
-                                                                     morphology_filter_args,
-                                                                     fill_gaps_args,
-                                                                     lw_filter_args,
-                                                                     diam_filter_args,
-                                                                     diameter_bins,
-                                                                     verbose=False
-                                                                     )
+                            elif method == 'thresholding':
+                                objects_dict = thresholding_segmentation(img,
+                                                                         threshold_args,
+                                                                         image_name,
+                                                                         colors,
+                                                                         contrast_kernel_size,
+                                                                         mask_args,
+                                                                         noise_removal_args,
+                                                                         morphology_filter_args,
+                                                                         fill_gaps_args,
+                                                                         lw_filter_args,
+                                                                         diam_filter_args,
+                                                                         diameter_bins,
+                                                                         verbose=False
+                                                                         )
 
-                        elif method == 'custom':
-                            raise ValueError(
-                            """No custom function defined. Define it in pyroots/batch_processing.py and 
-                            restart your python session (and comment out this error message)""")
+                            elif method == 'custom':
+                                raise ValueError(
+                                """No custom function defined. Define it in pyroots/batch_processing.py and 
+                                restart your python session (and comment out this error message)""")
 
-                        else:
-                            raise ValueError(
-                            """Didn't understand what method you wanted. Options are 'frangi', 
-                            'thresholding', and 'custom'""")
+                            else:
+                                raise ValueError(
+                                """Didn't understand what method you wanted. Options are 'frangi', 
+                                'thresholding', and 'custom'""")
 
 
-                        #save images?
-                        if save_images is True:
-                            io.imsave(path_out, objects_dict['objects'])
+                            #save images?
+                            if save_images is True:
+                                io.imsave(path_out, objects_dict['objects'])
 
-                        #Update on progress
-                        print("Done: {}".format(subpath_in))
+                            #Update on progress
+                            print("Done: {}".format(subpath_in))
 
-                        df_out = objects_dict['geometry']
-                        df_out.insert(0, "Time", strftime("%Y-%M-%d %H:%M:%S"))
+                            df_out = objects_dict['geometry']
+                            df_out.insert(0, "Time", strftime("%Y-%M-%d %H:%M:%S"))
 
-                        df_out.to_csv(table_out, sep='\t', index=False, header=False, mode='a')
+                            df_out.to_csv(table_out, sep='\t', index=False, header=False, mode='a')
 
-#                        except:
-#                            df_out = None
-#                            if params is None:  # just list the images that *would* be analyzed
-#                                print(subpath_in)
-#                            else:
-#                                print("\nCouldn't Process: {}.\n     ...Continuing...".format(subpath_in))
+                        except:
+                            df_out = None
+                            if params is None:  # just list the images that *would* be analyzed
+                                print(subpath_in)
+                            else:
+                                print("\nCouldn't Process: {}.\n     ...Continuing...".format(subpath_in))
 
 
                         return(df_out)
