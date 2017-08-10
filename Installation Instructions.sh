@@ -42,12 +42,14 @@ source ~/.bash_profile
 DOC
 
 cd $HOME/.local/lib/python3.*
+cd site-packages
 git clone https://github.com/pme1123/pyroots.git
+python3 pyroots/setup.py install --user
 mkdir $HOME/pyroots
 
 # make symbolic links of interactive documents for easy updating using `git pull`
 ln -s "pyroots/Example Images" "$HOME/pyroots/Example Images"
-ln -s "$HOME/.local/lib/python3.*/pyroots/Notebooks for Parameterization" "$HOME/pyroots/Notesbooks for Parameterization"
+ln -s "pyroots/Notebooks for Parameterization" "$HOME/pyroots/Notesbooks for Parameterization"
 ln -s "pyroots/Command Line Scripts" "$HOME/pyroots/Command Line Scripts"
 ln -s "pyroots/README.md" "$HOME/pyroots/README.md"
 ln -s "pyroots/Update_Pyroots.sh" "$HOME/pyroots/Update_Pyroots.sh"
