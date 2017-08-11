@@ -10,24 +10,26 @@ Frangi Image Loop - For series analysis across directories.
 """
 
 # TODO: Reminder - don't forget to update these imports!
+#TODO: TEST
+
 import os
-# from PIL import Image
 import pandas as pd
-from pyroots.image_manipulation import img_split, fill_gaps
-from pyroots.geometry_filters import morphology_filter, hollow_filter, diameter_filter
-from pyroots.noise_filters import color_filter
-from pyroots.summarize import bin_by_diameter, summarize_geometry
-from pyroots.skeletonization import skeleton_with_distance
+from pyroots import *
+#from pyroots.image_manipulation import img_split, fill_gaps
+#from pyroots.geometry_filters import morphology_filter, hollow_filter, diameter_filter
+#from pyroots.noise_filters import color_filter
+#from pyroots.summarize import bin_by_diameter, summarize_geometry
+#from pyroots.skeletonization import skeleton_with_distance
 from skimage import io, color, filters, morphology, img_as_ubyte, img_as_float
 import importlib
 import numpy as np
 from warnings import warn
 
-def frangi_segmentation(image, colors, frangi_args, threshold_args,
-                        color_args_1=None, color_args_2=None, color_args_3=None, 
-                        morphology_args_1=None, morphology_args_2=None, hollow_args=None, 
-                        fill_gaps_args=None, diameter_args=None, diameter_bins=None, 
-                        image_name="image"):
+def frangi_segmentation(image, colors, frangi_args, threshold_args, contrast_kernel_size='skip',
+                        color_args_1='skip', color_args_2='skip', color_args_3='skip', neighborhood_args='skip',
+                        morphology_args_1='skip', morphology_args_2='skip', hollow_args='skip', 
+                        fill_gaps_args='skip', diameter_args='skip', diameter_bins='skip', 
+                        image_name="image", verbose=False):
     """
     Possible approach to object detection using frangi filters. Selects colorbands for
     analysis, runs frangi filter, thresholds to identify candidate objects, then removes
@@ -45,14 +47,20 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
         Parameters to pass to `skimage.filters.frangi`
     threshold_args : dict
         Parameters to pass to `skimage.filters.threshold_adaptive`
+    contrast_kernel_size : int, str, or None
+        Kernel size for `skimage.exposure.equalize_adapthist`. If `int`, then gives the size of the kernel used
+        for adaptive contrast enhancement. If `None`, uses default (1/8 shortest image dimension). If `skip`,
+        then skips. 
     color_args_1 : dict
         Parameters to pass to `pyroots.color_filter`.
-    color_args_2 : list
+    color_args_2 : dict
         Parameters to pass to `pyroots.color_filter`. Combines with color_args_1
         in an 'and' statement.
-    color_args_3 : list
+    color_args_3 : dict
         Parameters to pass to `pyroots.color_filter`. Combines with color_args_1, 2
         in an 'and' statement.
+    neighborhood_args : dict
+        Parameters to pass to 'pyroots.neighborhood_filter'. 
     morphology_args_1 : dict
         Parameters to pass to `pyroots.morphology_filter`    
     morphology_args_2 : dict
@@ -63,8 +71,6 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
         Paramaters to pass to `pyroots.fill_gaps`
     diameter_bins : list
         To pass to `pyroots.bin_by_diameter`
-    optimize : bool
-        Print images automatically, to facilitate parameter tweaking
     image_name : str
         Identifier of image for summarizing
     
@@ -81,94 +87,174 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
     working_image = image.copy()
     
     # Pull band from colorspace
-    color_conversion = 'rgb2' + colors['colorspace'].lower()
+    # convert band to list for downstream compatibilty, if necessary
+    if len(colors) == 3: # it's a color image
+        try:
+            len(colors['band'])
+        except: 
+            colors['band'] = [colors['band']]
+            pass
+
+        # convert colorspace, if necessary
+        if colors['colorspace'].lower() != 'rgb':
+            working_image = getattr(color, "rgb2" + colors['colorspace'])(working_image)
+        else:
+            working_image = working_image.copy()
+        
+        # select band
+        if len(working_image.shape) == 3:  # excludes rgb2gray
+            working_image = [img_split(working_image)[i] for i in colors['band']]
+        else:
+            working_image = [working_image]
+
+        nbands = len(colors['band'])
+    
+    else:  # it's a black and white image
+        if working_image.shape == 3:
+            raise ValueError("Color images require color image parameters. Yours are black and white parameters.")
+        working_image = [working_image]
+        nbands = 1
+
+    if verbose is True:
+        print("Color bands selected")
+    
+    working_image = [img_as_float(i) for i in working_image]
+    
+    # Contrast enhancement
     try:
-        working_image = getattr(color, color_conversion)(working_image)
+        for i in range(nbands):
+            temp = exposure.equalize_adapthist(working_image[i], 
+                                               kernel_size = contrast_kernel_size)
+            working_image[i] = img_as_float(temp)
+        if verbose is True:
+            print("Contrast enhanced")
     except:
+        if contrast_kernel_size is not 'skip':
+            warn('Skipping contrast enhancement')
         pass
-    
-    working_image = img_split(working_image)[colors['band']]
-    
-    if colors['invert'] is True:
-        working_image = 1 - img_as_float(working_image)
+        
+    # invert if necessary
+    for i in range(nbands):
+        if colors['dark_on_light'][i] is False:
+            working_image[i] = 1 - img_as_float(working_image[i])
     
     # Frangi vessel enhancement
-    working_image = filters.frangi(working_image, **frangi_args)
-    working_image = 1-(working_image/working_image.max())  # rescale and invert --> dark objects for thresholding
-
+    working_image = [filters.frangi(i, **frangi_args) for i in working_image]
+    working_image = [1-(i/np.max(i)) for i in working_image]  # rescale and invert --> dark objects for thresholding
+    if verbose is True:
+        print("Frangi filter complete")
+    
     # Threshold to ID candidate objects
-    working_image = filters.threshold_adaptive(working_image, **threshold_args)
-    working_image = ~working_image  # new line for clarity; --> objects = True
+    for i in range(nbands):
+        working_image[i] = working_image[i] < filters.threshold_local(working_image[i], **threshold_args[i])
+    if verbose is True:
+        print("Thresholding complete")
+    
+    # Combine bands
+    combined = working_image[0].copy()
+    for i in range(1, nbands):
+        combined = combined * working_image[i]
+    working_image = combined.copy()
     
     # Filter candidate objects by color
     try:
         color1 = color_filter(image, working_image, **color_args_1)  #colorspace, target_band, low, high, percent)
+        if verbose is True:
+            print("Color filter 1 complete")
     except:
-        if color_args_1 is not None:
+        if color_args_1 is not 'skip':
             warn("Skipping Color Filter 1")
-        color1 = np.ones(working_image.shape)  # no filtering
-         
+        color1 = np.ones(working_image.shape)  # no filtering      
+
     try:
         color2 = color_filter(image, working_image, **color_args_2)  # nesting equates to an "and" statement.
+        if verbose is True:
+            print("Color filter 2 complete")   
     except:
-        if color_args_2 is not None:
+        if color_args_2 is not 'skip':
             warn("Skipping Color Filter 2")
         color2 = np.ones(working_image.shape)  # no filtering
     
     try:
         color3 = color_filter(image, working_image, **color_args_3)  # nesting equates to an "and" statement.
+        if verbose is True:
+            print("Color filter 3 complete")
     except:
-        if color_args_3 is not None:
+        if color_args_3 is not 'skip':
             warn("Skipping Color Filter 3")
         color3 = np.ones(working_image.shape)  # no filtering
     
+    # Combine bands
     working_image = color1 * color2 * color3
+    
+    # Filter objects by neighborhood colors
+    try:
+        working_image = neighborhood_filter(image, working_image, **neighborhood_args)
+        if verbose is True:
+            print("Neighborhood filter complete")
+    except:
+        if neighborhood_args is not 'skip':
+            warn("Skipping neighborhood filter")
+        pass
     
     # Filter candidate objects by morphology
     try:
         working_image = morphology_filter(working_image, **morphology_args_1)
+        if verbose is True:
+            print("Morphology filter 1 complete")
     except:
-        if morphology_args_1 is not None:
+        if morphology_args_1 is not 'skip':
             warn("Skipping morphology filter 1")
         pass
     
     # Filter candidate objects by hollowness
     try:  
         working_image = hollow_filter(working_image, **hollow_args)
+        if verbose is True:
+            print("Hollow filter complete")
     except:
-        if hollow_args is not None:
+        if hollow_args is not 'skip':
             warn("Skipping hollow filter")
         pass
     
     # Close small gaps and holes in accepted objects
     try:
         working_image = fill_gaps(working_image, **fill_gaps_args)
+        if verbose is True:
+            print("Gap filling complete")
     except:
-        if fill_gaps_args is not None:
+        if fill_gaps_args is not 'skip':
             warn("Skipping filling gaps")
         pass
     
     # Filter candidate objects by morphology
     try:
         working_image = morphology_filter(working_image, **morphology_args_2)
+        if verbose is True:
+            print("Morphology filter 2 complete")
     except:
-        if morphology_args_2 is not None:
+        if morphology_args_2 is not 'skip':
             warn("Skipping morphology filter 2")
         pass
         
     # Skeletonize. Now working with a dictionary of objects.
     skel = skeleton_with_distance(working_image)
+    if verbose is True:
+        print("Skeletonization complete")
     
     # Diameter filter
     try:
         diam = diameter_filter(skel, **diameter_args)
+        if verbose is True:
+            print("Diameter filter complete")
     except:
-        if diameter_args is not None:
+        diam = skel.copy()
+        if diameter_args is not 'skip':
             warn("Skipping diameter filter")
         pass
     
     # Summarize
-    if diameter_bins is None:
+    if diameter_bins is None or diameter_bins is 'skip':
         summary_df = summarize_geometry(diam['geometry'], image_name)
 
     else:
@@ -182,5 +268,8 @@ def frangi_segmentation(image, colors, frangi_args, threshold_args,
            'objects'  : diam['objects'],
            'length'   : diam['length'],
            'diameter' : diam['diameter']}
-    
+
+    if verbose is True:
+        print("Done")
+
     return(out)
