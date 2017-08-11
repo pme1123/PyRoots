@@ -12,7 +12,7 @@ neighborhod_filter - Filters candidate objects based on pixels near them
 from scipy import ndimage
 import numpy as np
 from skimage import img_as_float, measure, morphology, color
-from pyroots import *
+from pyroots.image_manipulation import img_split
 
 def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=4, colorspace='rgb', band=2):
     """
@@ -33,10 +33,10 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
         1-band, grayscale image, or RGB color image. Converted to float automatically. 
     objects : array
         binary array of candidate objects.
-    max_diff : float [0,1]
+    max_diff : float
         Maximum difference between values in `image` on each side of the candidate objects 
-        in `objects`. Note the value range, as all `image` are converted to float values. 
-        Default = 0.1
+        in `objects`. The magnitude of this value varies with the `colorspace` chosen. For `'rgb'`, 
+        the range is [0, 1]. 
     gap : int
         Number of pixels *beyond* each object to start measuring the neighborhood. The width
         of region between the object and the neighborhood. Useful for objects that may not fully
@@ -59,13 +59,12 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
         if colorspace.lower() != 'rgb':
             image = getattr(color, "rgb2" + colorspace)(image)
         image = img_split(image)[band]
-        
+    
     image = img_as_float(image)
     its = int((neighborhood_depth+2)/2)
     gap = int(gap)
     total_dilation = 2*its
     dims = image.shape
-    
 
     # neighborhood expansion kernels
     kernel_ls = [np.array([[0, 0, 0, 0, 0], [1, 1, 1, 0, 0], [0, 0, 0, 0, 0]]),      # left
@@ -93,7 +92,6 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
         # slice
         obj_slice = labels[a:c, b:d] == i
         img_slice = image[a:c, b:d]
-#         plt.imshow(~obj_slice * img_slice)
         
         ########################
         ### Local expansion ####
@@ -101,29 +99,29 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
         expanded = ~morphology.binary_dilation(obj_slice, morphology.disk(gap))
 
         nb_ls = []
+        median = []
         for k in range(4):
             t = obj_slice.copy()
             for i in range(its):
                 t = ndimage.convolve(t, kernel_ls[k])
             nb_ls.append(t * expanded)
-
+            
         ###############################
         #### Select largest object ####
         ###############################
-        for k in range(len(nb_ls)):
             nb_labels, nb_labels_ls = ndimage.label(nb_ls[k])
             nb_areas = [0] + [i['area'] for i in measure.regionprops(nb_labels)]  # regionprops skips index 0, annoyingly
-            nb_areas = nb_areas == max(nb_areas)  # sometimes (rarely) more than one subregion will have the same (max) area.
+            if len(nb_areas) == 1:
+                nb_areas = nb_areas + [0]
+            nb_areas = nb_areas == np.max(nb_areas)  # sometimes (rarely) more than one subregion will have the same (max) area.
             nb_ls[k] = nb_areas[nb_labels]
-
-        #######################################
-        #### Find values of largest object ####
-        #######################################
-        median = []
-        for k in range(len(nb_ls)):
+            
+        ##############################################
+        #### Find median values of largest object ####
+        ##############################################
             masked = np.ma.masked_array(img_slice, ~nb_ls[k]).compressed()
-            median.append(np.percentile(masked, 0.5))
-        
+            median.append(np.median(masked))
+
         ###############################################
         #### Calc difference (left-right, up-down) ####
         ###############################################
