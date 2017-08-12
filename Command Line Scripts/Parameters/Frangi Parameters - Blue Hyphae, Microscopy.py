@@ -1,0 +1,14 @@
+colors = {'colorspace': 'gray', 'band': [0], 'dark_on_light': [True]}
+frangi_args = {'scale_step': 1, 'black_ridges': True, 'beta2': 0.03, 'beta1': 0.99, 'scale_range': (2, 6)}
+threshold_args = [{'block_size': 31, 'param': 5.0, 'offset': 0.21}]
+contrast_kernel_size = 'skip'
+color_args_1 = {'colorspace': 'rgb', 'target_band': 2, 'low': 0.6, 'high': 0.99, 'invert': False, 'percent': 55}
+color_args_2 = {'colorspace': 'hsv', 'target_band': 1, 'low': 0.5, 'high': 0.01, 'invert': True, 'percent': 30}
+color_args_3 = {'colorspace': 'hsv', 'target_band': 0, 'low': 0.45, 'high': 0.69, 'invert': False, 'percent': 40}
+neighborhood_args = {'neighborhood_depth': 4, 'colorspace': 'rgb', 'band': 2, 'gap': 4, 'max_diff': 0.05}
+morphology_args_1 = {'min_length': 100, 'strict_solidity': 0.4, 'loose_solidity': 0.6, 'strict_eccentricity': 0.97, 'min_size': 100, 'loose_eccentricity': 0.4}
+morphology_args_2 = 'skip'
+hollow_args = {'ratio': 1.5, 'fill_kernel': 18}
+fill_gaps_args = {'median_radius': 1.6, 'min_hole_size': 300, 'closing_radius': 8}
+diameter_args = 'skip'
+diameter_bins = 'skip'

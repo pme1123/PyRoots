@@ -1,0 +1,10 @@
+colors = 'dark'
+contrast_kernel_size = 500
+threshold_args = [{'offset': 10, 'block_size': 101, 'param': 16.666666666666668}]
+mask_args = 'skip'
+noise_removal_args = {'radius_1': 0, 'median_iterations': 3, 'radius_2': 2}
+morphology_filter_args = {'strict_eccentricity': 0.95, 'loose_eccentricity': 0.5, 'min_size': 0, 'min_length': 0, 'strict_solidity': 0.6, 'loose_solidity': 0.8}
+fill_gaps_args = {'median_radius': 1.6, 'closing_radius': 3, 'min_hole_size': 100}
+lw_filter_args = {'threshold': 5}
+diam_filter_args = 'skip'
+diameter_bins = 'skip'
