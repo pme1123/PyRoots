@@ -244,7 +244,7 @@ def preprocessing_actions_loop(dir_in,
 
     # initiate loop
     for path, folder, filename in os.walk(dir_in):
-        if dir_out not in path:   # Don't run in the output directory.
+        if dir_out not in path and "FAILED PROCESSES" not in path:   # Don't run in the output directory.
             # ID the current folder
             subpath = path[len(dir_in)+1:]
 
@@ -331,7 +331,7 @@ def preprocessing_actions_loop(dir_in,
                 thread_pool.close()
                 thread_pool.join()
 
-    del globals()[_core_fn]  # to keep things safe
+#    del globals()[_core_fn]  # to keep things safe
 
     return("Done with preprocessing. You can view the results in {}".format(dir_out))
 
