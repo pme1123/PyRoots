@@ -300,9 +300,9 @@ def preprocessing_filters(image,
 ###############################################################################################
 def preprocessing_actions(image,
                           brightfield,
-                          brightfield_params=None,
-                          registration_params=None,
-                          smoothing_params=None,
+                          brightfield_correction_params='skip',
+                          registration_params='skip',
+                          smoothing_params='skip',
                           count_warnings=True):
     """
     Combines preprocessing functions into a convenience function.
@@ -311,7 +311,7 @@ def preprocessing_actions(image,
     ----------
     image : ndarray
         input rgb image
-    brightfield_params : dict or `None`
+    brightfield_correction_params : dict or `None`
         parameters for `pyroots.correct_brightfield`
     registration_params : dict or `None`
         parameters for `pyroots.register_bands`
@@ -330,9 +330,9 @@ def preprocessing_actions(image,
     warning_flag = 0
 
     try:
-        out = correct_brightfield(out, brightfield, **brightfield_params)
+        out = correct_brightfield(out, brightfield, **brightfield_correction_params)
     except:
-        if brightfield_params is not None:
+        if brightfield_correction_params is not 'skip':
             warning_flag += 1
             warn("Skipping brightfield correction", UserWarning)
         pass
@@ -340,7 +340,7 @@ def preprocessing_actions(image,
     try:
         out = cv2.bilateralFilter(out, -1, **smoothing_params)
     except:
-        if smoothing_params is not None:
+        if smoothing_params is not 'skip':
             warning_flag += 1
             warn("Skipping bilateral filter", UserWarning)
         pass
@@ -348,7 +348,7 @@ def preprocessing_actions(image,
     try:
         out = register_bands(out, **registration_params)
     except:
-        if registration_params is not None:
+        if registration_params is not 'skip':
             warning_flag += 1
             warn("Skipping band registration", UserWarning)
         pass

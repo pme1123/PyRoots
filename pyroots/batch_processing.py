@@ -229,8 +229,8 @@ def preprocessing_actions_loop(dir_in,
         try:
             print(i + " = " + str(globals()[i]))
         except:
-            print(i + " = " + str(None))
-            globals()[i] = None
+            print(i + " = " + str('skip'))
+            globals()[i] = 'skip'
 
     # Count files to analyze for status bar
     print("Counting {} images to screen in {}".format(extension_in, dir_in))
@@ -252,6 +252,7 @@ def preprocessing_actions_loop(dir_in,
             if dir_out is not None:
                 if not os.path.exists(os.path.join(dir_out, subpath)):
                     os.mkdir(os.path.join(dir_out, subpath))
+                if not os.path.exists(os.path.join(dir_out, "FAILED PROCESSES", subpath)):
                     os.mkdir(os.path.join(dir_out, "FAILED PROCESSES", subpath))
 
             # make a brightfield correction image for the directory
