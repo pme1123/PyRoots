@@ -1,6 +1,6 @@
 /pyroots/__pycache__/
 /pyroots/sample_images/
-/Test\ Scripts/
+/Test\ Scripts/*
 /Example\ Images/
 /Notebooks\ for\ Parameterization/
 .gitignore
