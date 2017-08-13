@@ -57,6 +57,7 @@ def thresholding_segmentation(image,
     	What do you want to call your image?
 
     colors : dict or string
+        See `pyroots.band_selector`
         For color analysis:
             Currently only supports one colorspace, but you can choose multiple bands.
         	A dictionary containing:
@@ -136,43 +137,12 @@ def thresholding_segmentation(image,
 
     # Begin
     ## Convert Colorspace, enhance contrast
-    if len(colors) == 3:  #then it's an RGB image
-        #housekeeping
-        nbands = len(colors['band'])
-        try:
-            len(colors['dark_on_light'])
-        except:
-            colors['dark_on_light'] = [colors['dark_on_light']]
-            if nbands != len(colors['dark_on_light']):
-                raise ValueError("Number of items in `colors['dark_on_light']` doesn't\
-                                 equal the number of bands in `colors['band']`!")
-            pass
-
-        try:
-            len(colors['band'])
-        except: 
-            colors['band'] = [colors['band']]
-            pass
-
-        # convert colorspace if necessary
-        try:
-            working_image = getattr(color, "rgb2" + colors['colorspace'].lower())(image)
-        except:
-            working_image = image.copy()
-            if colors['colorspace'].lower() != 'rgb':
-                raise ValueError("Didn't recognize specified colorspace. Skipping conversion")
-            pass
-        
-        # pull bands
-        working_image = [img_split(working_image)[i] for i in colors['band']]
-        
+    # Pull band from colorspace
+    working_image = band_selector(image, colors)
+    nbands = len(working_image)
+    if verbose is True:
+        print("Color bands selected")
     
-    else:  # it's a black and white image
-        nbands = 1
-        working_image = [image.copy()]
-        if len(image.shape) != 2:
-            raise ValueError("Your `color` argument suggested a grayscale image, but it has \
-            multiple bands!")
 
     ## Count nubmer of dictionaries in threshold_args. Should equal number of bands. Make sure is list.
     try:
@@ -183,9 +153,6 @@ def thresholding_segmentation(image,
             raise ValueError("Number of dictionaries in `threshold_args` doesn't\
                              equal the number of bands in `colors['band']`!")
         pass        
-
-    if verbose is True:
-        print("Analysis bands selected")
 
     try:
         for i in range(nbands):

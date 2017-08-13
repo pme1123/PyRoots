@@ -45,8 +45,8 @@ def frangi_segmentation(image,
     ----------
     image : ndarray
         RGB image to analyze
-    colors : dict
-        Parameters for picking the colorspace
+    colors : dict or str
+        Parameters for picking the colorspace. See `pyroots.band_selector`. 
     frangi_args : dict
         Parameters to pass to `skimage.filters.frangi`
     threshold_args : dict
@@ -88,37 +88,9 @@ def frangi_segmentation(image,
  
     """
 
-    working_image = image.copy()
-    
     # Pull band from colorspace
-    # convert band to list for downstream compatibilty, if necessary
-    if len(colors) == 3: # it's a color image
-        try:
-            len(colors['band'])
-        except: 
-            colors['band'] = [colors['band']]
-            pass
-
-        # convert colorspace, if necessary
-        if colors['colorspace'].lower() != 'rgb':
-            working_image = getattr(color, "rgb2" + colors['colorspace'])(working_image)
-        else:
-            working_image = working_image.copy()
-        
-        # select band
-        if len(working_image.shape) == 3:  # excludes rgb2gray
-            working_image = [img_split(working_image)[i] for i in colors['band']]
-        else:
-            working_image = [working_image]
-
-        nbands = len(colors['band'])
-    
-    else:  # it's a black and white image
-        if working_image.shape == 3:
-            raise ValueError("Color images require color image parameters. Yours are black and white parameters.")
-        working_image = [working_image]
-        nbands = 1
-
+    working_image = band_selector(image, colors)
+    nbands = len(working_image)
     if verbose is True:
         print("Color bands selected")
     
