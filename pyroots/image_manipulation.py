@@ -12,10 +12,11 @@ Contents:
 - _arrays_var
 - _center_image
 - fill_gaps
+- band_selector
 """
 
 import numpy as np
-from skimage import draw, morphology, filters, exposure, img_as_float, img_as_ubyte
+from skimage import draw, morphology, filters, exposure, img_as_float, img_as_ubyte, color
 from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
 import cv2
@@ -477,3 +478,85 @@ def fill_gaps(image, closing_radius=0, min_hole_size=0, median_radius=0.6):
     out = filters.median(out, selem=median_structure)
 
     return(out)
+    
+
+#########################################################################################################################
+#########################################################################################################################
+#######                                                                                                          ########
+#######                                               Band Selector                                              ########
+#######                                                                                                          ########
+#########################################################################################################################
+#########################################################################################################################
+def _band_selector(image, colors):
+    """
+    Convert `image` to the desired colorspace, and select bands. Also accepts grayscale images, which receive no conversion.
+    
+    Parameters
+    ----------
+    image : ndarray
+        RGB or grayscale image
+    colors : dict or str
+        If image is RGB, then pass a dictionary containing:
+            'colorspace': string describing the colorspace to work in (rgb, lab, hsv, etc). See `skimage.color.rgb2*()` functions.
+            'band': list of integers indexing the band(s) in `'colorspace'` to use. [0:2], usually. If `'colorspace'` is 'gray' or 'grey', then this is ignored.
+            'dark_on_light': list of boolean stating whether objects of interest are dark objects on a light background in band of colorspace.
+    """
+    # convert band to list for downstream compatibilty, if necessary
+    if len(colors) == 3:  #then it's an RGB image
+
+        #housekeeping
+        try:
+            nbands = len(colors['band'])
+        except: 
+            colors['band'] = [colors['band']]
+            nbands = len(colors['band'])
+
+        try:
+            len(colors['dark_on_light'])
+        except:
+            colors['dark_on_light'] = [colors['dark_on_light']]
+
+        if colors['colorspace'] is 'gray' or colors['colorspace'] is 'grey':
+            colors['band'] = [0]
+            nbands = 1
+            if len(colors['dark_on_light']) > 1:
+                raise ValueError(
+                    """Can't interpret multiple arguments for 'dark_on_light' when 
+                    'colorspace' is {}.
+                    """.format(colors['colorspace'])
+                )
+            
+        if nbands != len(colors['dark_on_light']):
+            raise ValueError(
+                """Number of items in `colors['dark_on_light']` doesn't
+                equal the number of bands in `colors['band']`!"""
+            )
+
+        # convert colorspace if necessary
+        try:
+            working_image = getattr(color, "rgb2" + colors['colorspace'].lower())(image)
+        except:
+            working_image = image.copy()
+            if colors['colorspace'].lower() != 'rgb':
+                raise ValueError(
+                    """Didn't recognize specified colorspace. 
+                    See skimage.color.rgb2* for options."""
+                )
+        
+        # pull bands
+        if len(working_image.shape) == 3:  # excludes rgb2gray
+            working_image = [img_split(working_image)[i] for i in colors['band']]
+        else:
+            working_image = [working_image]
+            nbands = 1
+    
+    else:  # it's a black and white image
+        nbands = 1
+        working_image = [image.copy()]
+        if len(image.shape) != 2:
+            raise ValueError(
+                """Your `color` argument suggested a grayscale image, but it has \
+                multiple bands!"""
+            )
+    
+    return(working_image)
