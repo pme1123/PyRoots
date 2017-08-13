@@ -1,7 +1,7 @@
-/pyroots/__pycache__/
-/pyroots/sample_images/
+/pyroots/__pycache__/*
+/pyroots/sample_images/*
 /Test\ Scripts/*
-/Example\ Images/
-/Notebooks\ for\ Parameterization/
+/Example\ Images/*
+/Notebooks\ for\ Parameterization/*
 .gitignore
 
