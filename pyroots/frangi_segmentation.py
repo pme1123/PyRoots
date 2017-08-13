@@ -9,27 +9,31 @@ Frangi Image Loop - For series analysis across directories.
 
 """
 
-# TODO: Reminder - don't forget to update these imports!
-#TODO: TEST
-
 import os
 import pandas as pd
 from pyroots import *
-#from pyroots.image_manipulation import img_split, fill_gaps
-#from pyroots.geometry_filters import morphology_filter, hollow_filter, diameter_filter
-#from pyroots.noise_filters import color_filter
-#from pyroots.summarize import bin_by_diameter, summarize_geometry
-#from pyroots.skeletonization import skeleton_with_distance
 from skimage import io, color, filters, morphology, img_as_ubyte, img_as_float
 import importlib
 import numpy as np
 from warnings import warn
 
-def frangi_segmentation(image, colors, frangi_args, threshold_args, contrast_kernel_size='skip',
-                        color_args_1='skip', color_args_2='skip', color_args_3='skip', neighborhood_args='skip',
-                        morphology_args_1='skip', morphology_args_2='skip', hollow_args='skip', 
-                        fill_gaps_args='skip', diameter_args='skip', diameter_bins='skip', 
-                        image_name="image", verbose=False):
+def frangi_segmentation(image, 
+                        colors,
+                        frangi_args, 
+                        threshold_args, 
+                        contrast_kernel_size='skip',
+                        color_args_1='skip',
+                        color_args_2='skip', 
+                        color_args_3='skip', 
+                        neighborhood_args='skip',
+                        morphology_args_1='skip', 
+                        morphology_args_2='skip', 
+                        hollow_args='skip', 
+                        fill_gaps_args='skip', 
+                        diameter_args='skip', 
+                        diameter_bins='skip', 
+                        image_name='image', 
+                        verbose=False):
     """
     Possible approach to object detection using frangi filters. Selects colorbands for
     analysis, runs frangi filter, thresholds to identify candidate objects, then removes
