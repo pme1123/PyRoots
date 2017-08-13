@@ -487,7 +487,7 @@ def fill_gaps(image, closing_radius=0, min_hole_size=0, median_radius=0.6):
 #######                                                                                                          ########
 #########################################################################################################################
 #########################################################################################################################
-def _band_selector(image, colors):
+def band_selector(image, colors):
     """
     Convert `image` to the desired colorspace, and select bands. Also accepts grayscale images, which receive no conversion.
     
