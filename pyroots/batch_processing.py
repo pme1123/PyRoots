@@ -642,9 +642,21 @@ def pyroots_batch_loop(dir_in,
         ]
 
     elif method == 'frangi':
-        dicts = ['colors', 'frangi_args', 'threshold_args', 'color_args_1', 'color_args_2',
-                 'color_args_3', 'morphology_args_1', 'morphology_args_2', 'hollow_args',
-                 'fill_gaps_args', 'diameter_args', 'diameter_bins']
+        dicts = [
+            'colors', 
+            'frangi_args', 
+            'threshold_args', 
+            'color_args_1', 
+            'color_args_2',
+            'color_args_3', 
+            'neighborhood_args', 
+            'morphology_args_1', 
+            'morphology_args_2',
+            'hollow_args',
+            'fill_gaps_args', 
+            'diameter_args', 
+            'diameter_bins'
+        ]
 
     elif method == 'custom':
         warn('make a list of parameter/dictionary names in the source!')
