@@ -14,7 +14,7 @@ import numpy as np
 from skimage import img_as_float, measure, morphology, color
 from pyroots.image_manipulation import img_split
 
-def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=4, colorspace='rgb', band=2):
+def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=4, colorspace='rgb', band=2, return_band=False):
     """
     Calculate difference between values on either side of a long, skinny object.
     
@@ -48,6 +48,8 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
         See `skimage.color`. Ignored if given a 1-band image.
     band : int [0,2]
         Band index for colorspace. Ex. in RGB R=0, G=1, B=2. Ignored if `image` is 1-band. 
+    return_band : bool
+        Return the colorspace band as well? For diagnostics. 
         
     Returns
     -------
@@ -58,7 +60,7 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
     if len(image.shape) == 3:
         if colorspace.lower() != 'rgb':
             image = getattr(color, "rgb2" + colorspace)(image)
-        image = img_split(image)[band]
+        image = pr.img_split(image)[band]
     
     image = img_as_float(image)
     its = int((neighborhood_depth+2)/2)
@@ -100,6 +102,7 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
 
         nb_ls = []
         median = []
+        area = []
         for k in range(4):
             t = obj_slice.copy()
             for i in range(its):
@@ -113,8 +116,10 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
             nb_areas = [0] + [i['area'] for i in measure.regionprops(nb_labels)]  # regionprops skips index 0, annoyingly
             if len(nb_areas) == 1:
                 nb_areas = nb_areas + [0]
-            nb_areas = nb_areas == np.max(nb_areas)  # sometimes (rarely) more than one subregion will have the same (max) area.
+            max_area = np.max(nb_areas)
+            nb_areas = nb_areas == max_area  # sometimes (rarely) more than one subregion will have the same (max) area.
             nb_ls[k] = nb_areas[nb_labels]
+            area.append(max_area)
             
         ##############################################
         #### Find median values of largest object ####
@@ -125,18 +130,21 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
         ###############################################
         #### Calc difference (left-right, up-down) ####
         ###############################################
-        diffs = [np.abs(median[0] - median[1]),
-                 np.abs(median[2]- median[3])]
-        diffs = [i > max_diff for i in diffs] 
+        area = area == np.max(area)
+        if area[0] or area[1]:
+            diff = np.abs(median[0] - median[1])
+        else:
+            diff = np.abs(median[2] - median[3])
         
         ###################################
         #### Test if exceeds threshold ####
-        ###################################
-        if sum(diffs) > 0:
-            decision_ls.append(False)
-        else:
-            decision_ls.append(True)
-    
+        ##################################
+        diff = diff < max_diff
+        decision_ls.append(diff)
+        
     out = np.array(decision_ls)[labels]
+    
+    if return_band:
+        out = [out, image]
     
     return(out)
