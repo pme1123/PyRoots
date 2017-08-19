@@ -48,9 +48,9 @@ def frangi_segmentation(image,
         RGB image to analyze
     colors : dict or str
         Parameters for picking the colorspace. See `pyroots.band_selector`. 
-    frangi_args : dict
+    frangi_args : list of dict or dict
         Parameters to pass to `skimage.filters.frangi`
-    threshold_args : dict
+    threshold_args : list of dict or dict
         Parameters to pass to `skimage.filters.threshold_adaptive`
     contrast_kernel_size : int, str, or None
         Kernel size for `skimage.exposure.equalize_adapthist`. If `int`, then gives the size of the kernel used
@@ -95,6 +95,29 @@ def frangi_segmentation(image,
     if verbose is True:
         print("Color bands selected")
     
+    ## Count nubmer of dictionaries in threshold_args and frangi_args. Should equal number of bands. Convert to list if necessary
+    try:
+        len(threshold_args[0])
+    except:
+        threshold_args = [threshold_args]
+        if nbands != len(threshold_args):
+            raise ValueError(
+                """Number of dictionaries in `threshold_args` doesn't
+                equal the number of bands in `colors['band']`!"""
+            )
+        pass 
+    
+    try:
+        len(frangi_args[0])
+    except:
+        frangi_args = [frangi_args]
+        if nbands != len(frangi_args):
+            raise ValueError(
+                """Number of dictionaries in `frangi_args` doesn't 
+                equal the number of bands in `colors['band']`!"""
+            )
+        pass    
+    
     working_image = [img_as_float(i) for i in working_image]
     
     # Contrast enhancement
@@ -127,7 +150,7 @@ def frangi_segmentation(image,
     
     # Frangi vessel enhancement
     for i in range(nbands):
-        temp = filters.frangi(working_image[i], **frangi_args)
+        temp = filters.frangi(working_image[i], **frangi_args[i])
         temp = 1 - temp/np.max(temp)
         temp = temp < filters.threshold_local(temp, **threshold_args[i])
         working_image[i] = temp.copy()
