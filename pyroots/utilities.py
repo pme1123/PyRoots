@@ -19,12 +19,22 @@ import os
 from multiprocessing.dummy import Pool
 import pyroots as pr
 
-def _zoom(image, xmin, xmax, ymin, ymax):
+def _zoom(image, xmin, xmax, ymin, ymax, set_scale=False):
     """
     Subset an array to the bounding box suggested by the titles
+    If `set_scale`, then the first two pixels of the slice are set to the
+    max and min of the entire image.
     """
+    out = image[ymin:ymax, xmin:xmax]
+    if set_scale:
+        if len(image.shape) == 3:
+            out[0, 0, 0:3] = [np.max(image[:, :, i]) for i in range(image.shape[2])]
+            out[1, 1, 0:3] = [np.min(image[:, :, i]) for i in range(image.shape[2])]
+        else:
+            out[0, 0] = np.max(image)
+            out[1, 1] = np.min(image)
     
-    return(image[ymin:ymax, xmin:xmax])
+    return(out)
 
 def band_viewer(img, colorspace, zoom_coords = None, return_bands=False):
     """
