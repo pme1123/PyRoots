@@ -20,7 +20,8 @@ from warnings import warn
 def frangi_segmentation(image, 
                         colors,
                         frangi_args, 
-                        threshold_args, 
+                        threshold_args,
+                        separate_objects=True, 
                         contrast_kernel_size='skip',
                         color_args_1='skip',
                         color_args_2='skip', 
@@ -89,7 +90,7 @@ def frangi_segmentation(image,
     """
 
     # Pull band from colorspace
-    working_image = band_selector(image, colors)
+    working_image = band_selector(image, colors)  # expects dictionary (lazy coding)
     nbands = len(working_image)
     if verbose is True:
         print("Color bands selected")
@@ -102,7 +103,7 @@ def frangi_segmentation(image,
             temp = exposure.equalize_adapthist(working_image[i], 
                                                kernel_size = contrast_kernel_size)
             working_image[i] = img_as_float(temp)
-        if verbose is True:
+        if verbose:
             print("Contrast enhanced")
     except:
         if contrast_kernel_size is not 'skip':
@@ -111,31 +112,41 @@ def frangi_segmentation(image,
         
     # invert if necessary
     for i in range(nbands):
-        if colors['dark_on_light'][i] is False:
-            working_image[i] = 1 - img_as_float(working_image[i])
+        if not colors['dark_on_light'][i]:
+            working_image[i] = 1 - working_image[i]
+    
+    # Detect edges for separating objects
+    if separate_objects:
+        edges = [filters.scharr(i) for i in working_image]
+        edges = [i > filters.threshold_otsu(i) for i in edges]
+        edges = [morphology.skeletonize(i) for i in edges]
+        if verbose:
+            print("Edges found")
+    else:
+        edges = [np.zeros(i.shape) == 0] * nbands    # Evaluate to True
     
     # Frangi vessel enhancement
-    working_image = [filters.frangi(i, **frangi_args) for i in working_image]
-    working_image = [1-(i/np.max(i)) for i in working_image]  # rescale and invert --> dark objects for thresholding
-    if verbose is True:
-        print("Frangi filter complete")
-    
-    # Threshold to ID candidate objects
     for i in range(nbands):
-        working_image[i] = working_image[i] < filters.threshold_local(working_image[i], **threshold_args[i])
-    if verbose is True:
-        print("Thresholding complete")
+        temp = filters.frangi(working_image[i], **frangi_args)
+        temp = 1 - temp/np.max(temp)
+        temp = temp < filters.threshold_local(temp, **threshold_args[i])
+        working_image[i] = temp.copy()
     
-    # Combine bands
-    combined = working_image[0].copy()
+    frangi = working_image.copy()
+    if verbose:
+        print("Frangi filter, threshold complete")
+    
+    
+    # Combine bands, separate objects
+    combined = working_image[0] * ~edges[0]
     for i in range(1, nbands):
-        combined = combined * working_image[i]
+        combined = combined * working_image[i] * ~edges[i]
     working_image = combined.copy()
     
     # Filter candidate objects by color
     try:
         color1 = color_filter(image, working_image, **color_args_1)  #colorspace, target_band, low, high, percent)
-        if verbose is True:
+        if verbose:
             print("Color filter 1 complete")
     except:
         if color_args_1 is not 'skip':
@@ -144,7 +155,7 @@ def frangi_segmentation(image,
 
     try:
         color2 = color_filter(image, working_image, **color_args_2)  # nesting equates to an "and" statement.
-        if verbose is True:
+        if verbose:
             print("Color filter 2 complete")   
     except:
         if color_args_2 is not 'skip':
@@ -153,7 +164,7 @@ def frangi_segmentation(image,
     
     try:
         color3 = color_filter(image, working_image, **color_args_3)  # nesting equates to an "and" statement.
-        if verbose is True:
+        if verbose:
             print("Color filter 3 complete")
     except:
         if color_args_3 is not 'skip':
@@ -162,11 +173,42 @@ def frangi_segmentation(image,
     
     # Combine bands
     working_image = color1 * color2 * color3
+    del color1
+    del color2
+    del color3
+    
+    # Re-expand to area
+    if separate_objects:
+    
+        # find edges removed
+        temp = [frangi[i] * edges[i] for i in range(nbands)]
+        rm_edges = temp[0].copy()
+        for i in range(1, nbands):
+            rm_edges = rm_edges * temp
+        
+        # filter by color per criteria above
+        try:    color1 = color_filter(image, rm_edges, **color_args_1)
+        except: color1 = np.ones(rm_edges.shape)
+        try:    color2 = color_filter(image, rm_edges, **color_args_2)
+        except: color2 = np.ones(rm_edges.shape)
+        try:    color3 = color_filter(image, rm_edges, **color_args_3)
+        except: color3 = np.ones(rm_edges.shape)
+        
+        # Combine color filters
+        expanded = color1 * color2 * color3
+        if verbose:
+            print("Edges re-added")
+    else:
+        expanded = np.zeros(colorfilt.shape) == 1  # evaluate to false
+    
+    
+    working_image = expanded ^ working_image  # bitwise or
+        
     
     # Filter objects by neighborhood colors
     try:
         working_image = neighborhood_filter(image, working_image, **neighborhood_args)
-        if verbose is True:
+        if verbose:
             print("Neighborhood filter complete")
     except:
         if neighborhood_args is not 'skip':
@@ -176,7 +218,7 @@ def frangi_segmentation(image,
     # Filter candidate objects by morphology
     try:
         working_image = morphology_filter(working_image, **morphology_args_1)
-        if verbose is True:
+        if verbose:
             print("Morphology filter 1 complete")
     except:
         if morphology_args_1 is not 'skip':
@@ -185,8 +227,9 @@ def frangi_segmentation(image,
     
     # Filter candidate objects by hollowness
     try:  
-        working_image = hollow_filter(working_image, **hollow_args)
-        if verbose is True:
+        temp = morphology.remove_small_holes(working_image, min_size=10)
+        working_image = hollow_filter(temp, **hollow_args)
+        if verbose:
             print("Hollow filter complete")
     except:
         if hollow_args is not 'skip':
@@ -196,7 +239,7 @@ def frangi_segmentation(image,
     # Close small gaps and holes in accepted objects
     try:
         working_image = fill_gaps(working_image, **fill_gaps_args)
-        if verbose is True:
+        if verbose:
             print("Gap filling complete")
     except:
         if fill_gaps_args is not 'skip':
@@ -206,7 +249,7 @@ def frangi_segmentation(image,
     # Filter candidate objects by morphology
     try:
         working_image = morphology_filter(working_image, **morphology_args_2)
-        if verbose is True:
+        if verbose:
             print("Morphology filter 2 complete")
     except:
         if morphology_args_2 is not 'skip':
@@ -215,13 +258,13 @@ def frangi_segmentation(image,
         
     # Skeletonize. Now working with a dictionary of objects.
     skel = skeleton_with_distance(working_image)
-    if verbose is True:
+    if verbose:
         print("Skeletonization complete")
     
     # Diameter filter
     try:
         diam = diameter_filter(skel, **diameter_args)
-        if verbose is True:
+        if verbose:
             print("Diameter filter complete")
     except:
         diam = skel.copy()
