@@ -9,8 +9,8 @@ Contents:
 - preprocessing_filters
 """
 import numpy as np
-from skimage import filters, img_as_ubyte, exposure, color
-from pyroots import img_split, _center_image
+from skimage import filters, img_as_ubyte, exposure, color, morphology
+from pyroots import img_split, _center_image, draw_mask
 import cv2
 from warnings import warn
 import colour
@@ -194,10 +194,18 @@ def register_bands(image, template_band=1, ECC_criterion=True):
     for i in range(depth):
         if i != template_band:
             analyze.append(i)
-
+            
     # Extract bands, find edges
     bands = img_split(image)
-    edges = [img_as_ubyte(filters.scharr(i)) for i in bands]
+    edges = [np.ones_like(i) for i in bands]
+    for i in range(len(bands)):
+        temp = filters.gaussian(bands[i], sigma=1)
+        scharr = filters.scharr(temp)
+        temp = scharr > filters.threshold_otsu(scharr)
+        m = 1 - draw_mask(temp, 110, 110, rectangle=False)
+        m = m + draw_mask(temp, 10, 10, rectangle=False) # make a donut
+        temp = morphology.skeletonize(temp)
+        edges[i] = img_as_ubyte(scharr * temp * m)
 
     #make output image
     out = np.zeros((height, width, depth), dtype=np.uint8)
