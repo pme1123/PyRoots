@@ -139,14 +139,20 @@ def frangi_segmentation(image,
             working_image[i] = 1 - working_image[i]
     
     # Detect edges for separating objects
+    edges = [np.ones_like(i)] * nbands    # all True
     if separate_objects:
-        edges = [filters.scharr(i) for i in working_image]
-        edges = [i > filters.threshold_otsu(i) for i in edges]
-        edges = [morphology.skeletonize(i) for i in edges]
+        for i in range(nbands):
+            temp = filters.gaussian(working_image[i])
+            temp = filters.scharr(temp)
+            temp = temp > filters.threshold_otsu(temp)
+            edges[i] = morphology.skeletonize(temp)
+            
+#        edges = [filters.gaussian(i) for i in working_image]
+#        edges = [filters.scharr(i) for i in edges]
+#        edges = [i > filters.threshold_otsu(i) for i in edges]
+#        edges = [morphology.skeletonize(i) for i in edges]
         if verbose:
             print("Edges found")
-    else:
-        edges = [np.zeros(i.shape) == 0] * nbands    # Evaluate to True
     
     # Frangi vessel enhancement
     for i in range(nbands):
@@ -207,7 +213,7 @@ def frangi_segmentation(image,
         temp = [frangi[i] * edges[i] for i in range(nbands)]
         rm_edges = temp[0].copy()
         for i in range(1, nbands):
-            rm_edges = rm_edges * temp
+            rm_edges = rm_edges * temp[i]
         
         # filter by color per criteria above
         try:    color1 = color_filter(image, rm_edges, **color_args_1)
@@ -219,13 +225,21 @@ def frangi_segmentation(image,
         
         # Combine color filters
         expanded = color1 * color2 * color3
-        if verbose:
-            print("Edges re-added")
     else:
         expanded = np.zeros(colorfilt.shape) == 1  # evaluate to false
     
     
     working_image = expanded ^ working_image  # bitwise or
+    
+    try:    # remove little objects (for computational efficiency)
+        working_image = morphology.remove_small_objects(
+            working_image, 
+            min_size=morphology_args_1['min_size']
+        )
+    except:
+        pass
+    if verbose:
+        print("Edges re-added")
         
     
     # Filter objects by neighborhood colors
@@ -249,15 +263,16 @@ def frangi_segmentation(image,
         pass
     
     # Filter candidate objects by hollowness
-    try:  
-        temp = morphology.remove_small_holes(working_image, min_size=10)
-        working_image = hollow_filter(temp, **hollow_args)
-        if verbose:
-            print("Hollow filter complete")
-    except:
-        if hollow_args is not 'skip':
+    if hollow_args is not 'skip':  
+        working_image = morphology.remove_small_holes(working_image, min_size=10)
+        try:
+            if np.sum(temp) > 0:
+                working_image = hollow_filter(temp, **hollow_args)
+            if verbose:
+                print("Hollow filter complete")
+        except:
             warn("Skipping hollow filter")
-        pass
+            pass
     
     # Close small gaps and holes in accepted objects
     try:
