@@ -202,10 +202,8 @@ def register_bands(image, template_band=1, ECC_criterion=True):
         temp = filters.gaussian(bands[i], sigma=1)
         scharr = filters.scharr(temp)
         temp = scharr > filters.threshold_otsu(scharr)
-        m = 1 - draw_mask(temp, 110, 110, rectangle=False)
-        m = m + draw_mask(temp, 10, 10, rectangle=False) # make a donut
         temp = morphology.skeletonize(temp)
-        edges[i] = img_as_ubyte(scharr * temp * m)
+        edges[i] = img_as_ubyte(scharr * temp)
 
     #make output image
     out = np.zeros((height, width, depth), dtype=np.uint8)
