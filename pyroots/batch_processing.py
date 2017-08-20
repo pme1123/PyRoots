@@ -842,7 +842,7 @@ def pyroots_batch_loop(dir_in,
 
                             #save images?
                             if save_images is True:
-                                io.imsave(path_out, objects_dict['objects'])
+                                io.imsave(path_out, img_as_ubyte(255*objects_dict['objects']))  # for black/white printing
 
                             #Update on progress
                             print("Done: {}".format(subpath_in))
