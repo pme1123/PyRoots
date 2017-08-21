@@ -142,15 +142,16 @@ def frangi_segmentation(image,
     edges = [np.ones_like(i)] * nbands    # all True
     if separate_objects:
         for i in range(nbands):
-            temp = filters.gaussian(working_image[i])
-            temp = filters.scharr(temp)
-            temp = temp > filters.threshold_otsu(temp)
+            edge_val = 1
+            sigma_val = 0.25
+            while edge_val > 0.1 and sigma_val < 10:
+                temp = filters.gaussian(working_image[i], sigma=sigma_val)
+                temp = filters.scharr(temp)
+                temp = temp < filters.threshold_otsu(temp)
+                edge_val = np.sum(temp) / np.sum(np.ones_like(temp))
+                sigma_val = 2*sigma_val
             edges[i] = morphology.skeletonize(temp)
-            
-#        edges = [filters.gaussian(i) for i in working_image]
-#        edges = [filters.scharr(i) for i in edges]
-#        edges = [i > filters.threshold_otsu(i) for i in edges]
-#        edges = [morphology.skeletonize(i) for i in edges]
+
         if verbose:
             print("Edges found")
     
@@ -240,7 +241,16 @@ def frangi_segmentation(image,
         pass
     if verbose:
         print("Edges re-added")
-        
+
+    # Filter candidate objects by morphology
+    try:
+        working_image = morphology_filter(working_image, **morphology_args_1)
+        if verbose:
+            print("Morphology filter 1 complete")
+    except:
+        if morphology_args_1 is not 'skip':
+            warn("Skipping morphology filter 1")
+        pass        
     
     # Filter objects by neighborhood colors
     try:
@@ -250,16 +260,6 @@ def frangi_segmentation(image,
     except:
         if neighborhood_args is not 'skip':
             warn("Skipping neighborhood filter")
-        pass
-    
-    # Filter candidate objects by morphology
-    try:
-        working_image = morphology_filter(working_image, **morphology_args_1)
-        if verbose:
-            print("Morphology filter 1 complete")
-    except:
-        if morphology_args_1 is not 'skip':
-            warn("Skipping morphology filter 1")
         pass
     
     # Filter candidate objects by hollowness
