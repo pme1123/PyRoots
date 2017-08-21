@@ -199,10 +199,14 @@ def register_bands(image, template_band=1, ECC_criterion=True):
     bands = img_split(image)
     edges = [np.ones_like(i) for i in bands]
     for i in range(len(bands)):
-        temp = filters.gaussian(bands[i], sigma=1)
-        scharr = filters.scharr(temp)
-        temp = scharr > filters.threshold_otsu(scharr)
-        temp = morphology.skeletonize(temp)
+        sigma_val = 0.25
+        edge_val = 1
+        while edge_val > 0.1 and sigma_val < 10:
+            temp = filters.gaussian(bands[i], sigma=sigma_val)
+            scharr = filters.scharr(temp)
+            temp = scharr > filters.threshold_otsu(scharr)
+            edge_val = np.sum(temp) / np.sum(np.ones_like(temp))
+            sigma_val = 2*sigma_val
         edges[i] = img_as_ubyte(scharr * temp)
 
     #make output image
