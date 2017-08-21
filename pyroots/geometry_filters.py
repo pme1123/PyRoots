@@ -309,11 +309,28 @@ def morphology_filter(image, loose_eccentricity=0, loose_solidity=1,
     --------
     `skimage.measure.regionprops`, `ndimage.label`
     """
+    #### easy stuff first ####
     
-    # Label objects and attach regionprops methods for each label
-    labels = ndimage.label(image)[0]
+    # min size
+    if min_size is None:
+        working_image = image.copy()
+    else:
+        working_image = morphology.remove_small_objects(image, min_size=min_size)
+    
+    # min length of major axis
+    labels = ndimage.label(working_image)[0]
     props = measure.regionprops(labels)
-
+    
+    if min_length is not None:
+        length = [0] + [i.major_axis_length for i in props]
+        length = np.array(length)[labels]  # make an image based on labels
+        working_image = length > min_length
+    
+    
+    #### eccentricity and solidity  ####
+    
+    labels = ndimage.label(working_image)[0]
+    props = measure.regionprops(labels)
     # calculate eccentricity
     eccentricity = [0] + [i.eccentricity for i in props]
     eccentricity = np.array(eccentricity)[labels]  # make an image based on labels
@@ -326,24 +343,8 @@ def morphology_filter(image, loose_eccentricity=0, loose_solidity=1,
     loose = ((solidity < loose_solidity) * (solidity > 0)) * (eccentricity > loose_eccentricity)  # AND
     strict = ((solidity < strict_solidity) * (solidity > 0)) + (eccentricity > strict_eccentricity)  # OR 
     
-    # calculate length
-    if min_length is None:
-        length = np.ones(image.shape)
-    else:
-        length = [0] + [i.major_axis_length for i in props]
-        length = np.array(length)[labels]  # make an image based on labels
-        length = length > min_length
-    
-    # calculate size
-    if min_size is None:
-        size = np.ones(image.shape)
-    else:
-        size = [0] + [i.area for i in props]
-        size = np.array(size)[labels]  # make an image based on labels
-        size = (size > min_size)       # filter
-    
     # Combine and exit. Must pass all. 
-    out = strict * loose * length * size  # AND
+    out = strict * loose * working_image  # AND
     return(out)
 
 #########################################################################################################################
