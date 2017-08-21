@@ -9,6 +9,7 @@ band_viewer
 multi_image_plot
 random_blobs
 tiff_splitter
+img_rescaler
 """
 
 from matplotlib import pyplot as plt
@@ -18,6 +19,10 @@ from skimage import io, color
 import os
 from multiprocessing.dummy import Pool
 import pyroots as pr
+from skimage import io, img_as_ubyte
+import tqdm
+from multiprocessing import Pool
+from time import sleep
 
 def _zoom(image, xmin, xmax, ymin, ymax, set_scale=False):
     """
@@ -239,6 +244,64 @@ def tiff_splitter(directory_in, extension=".tif", threads=1):
     threadpool.join() 
                   
     return("Done")
+
+
+def img_rescaler(dir_in, extension_in, threads=1):
+    """ 
+    Import an image, rescale it to normal UBYTE (0-255, 8 bit) range, and re-save it.
     
+    """
+
+    dir_out = os.path.join(dir_in, "rescaled")
     
+    total_files = 0
+    for path, folder, filename in os.walk(dir_in):
+        if dir_out not in path:
+            for f in filename:
+                if f.endswith(extension_in):
+                    total_files += 1
+    print("\nYou have {} images to analyze".format(total_files))
+    
+    for path, folder, filename in os.walk(dir_in):
+        if dir_out not in path:   # Don't run in the output directory.
+
+            # Make directory for saving objects
+            subpath = path[len(dir_in)+1:]
+            if not os.path.exists(os.path.join(dir_out, subpath)):
+                os.mkdir(os.path.join(dir_out, subpath))
+
+            # What we'll do:
+            global _core_fn  # bad form for Pool.map() compatibility
+            def _core_fn(filename):
+                if filename.endswith(extension_in):
+                    # count progress.
+
+                    path_in = os.path.join(path, filename)
+                    subpath_in = os.path.join(subpath, filename) # for printing purposes
+                    path_out = os.path.join(dir_out, subpath, filename)
+
+                    if os.path.exists(path_out): #skip
+                        print("\nALREADY ANALYZED: {}. Skipping...\n".format(subpath_in))
+
+                    else: #(try to) do it
+                        try:
+                            img = io.imread(path_in)  # load image
+                            img = img_as_ubyte(img / np.max(img))
+                            io.imsave(path_out, img)
+                        except:
+                            print("Couldn't analyze {}".format(subpath_in))
+                return()
+            
+            # run it
+            sleep(1)  # to give everything time to  load
+            thread_pool = Pool(threads)
+            # Work on _core_fn (and give progressbar)
+            tqdm.tqdm(thread_pool.imap_unordered(_core_fn,
+                                                 filename,
+                                                 chunksize=1),
+                      total=total_files)
+            # finish
+            thread_pool.close()
+            thread_pool.join()
+    return()
     
