@@ -117,7 +117,7 @@ def calc_temperature_distance(image, percentiles, max_distance):
 #########                          Brightfield Correction                        ##############
 #########                                                                        ##############
 ###############################################################################################
-def correct_brightfield(image, brightfield, correction_factor=1):
+def correct_brightfield(image, brightfield, correction_factor='auto'):
     """
     Adjusts exposure of an image based on a 'brightfield' blank. This corrects exposure vignetting
     (dark edges, bright centers, for example) of images. Often favorably enhances color.
@@ -128,8 +128,8 @@ def correct_brightfield(image, brightfield, correction_factor=1):
         image of same shape as the brightfield
     brightfield : ndarray
         image of 'blank' background, probably with gaussian blur added.
-    correction_factor : float, int
-        scale brightfield values to reduce/increase saturation. See notes.
+    correction_factor : float, int, or str
+        scale brightfield values to reduce/increase saturation. If auto, chooses a value automatically. See notes.
 
     Returns
     -------
@@ -141,10 +141,25 @@ def correct_brightfield(image, brightfield, correction_factor=1):
     some pixels, then values are outside of the normal range of images. If this happens excessively,
     the corrected image will look oversaturated. In this case, increase `correction_factor` slightly
     to scale up `brightfield`. Likewise, if the corrected image is undersaturrated, decrease
-    `correction_factor` slightly. This function sets a ceiling of output values at 255.
+    `correction_factor` slightly. If 'auto', then this is set to have a percentage of oversaturated pixels between
+    0.1% and 5% of the total area of the image. This function sets a ceiling of output values at 255.
 
     """
-    out = image / (brightfield * correction_factor)
+    if correction_factor is 'auto':
+        correction_factor = 1
+        overexp = 1
+        while overexp > 0.05 and correction_factor < 1.3:
+            out = image / (brightfield * correction_factor)
+            overexp = np.sum(out > 1) / np.sum(np.ones_like(out))
+            correction_factor += 0.02
+
+        while overexp < 0.001 and correction_factor > 0.7:
+            out = image/(brightfield * correction_factor)
+            overexp = np.sum(out > 1) / np.sum(np.ones_like(out))
+            correction_factor -= 0.02
+    else:
+        out = image / (brightfield * correction_factor)
+    
     out[out>1] = 1
 
     out = img_as_ubyte(out)
