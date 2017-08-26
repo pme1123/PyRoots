@@ -57,10 +57,13 @@ def neighborhood_filter(image, objects, max_diff=0.1, gap=4, neighborhood_depth=
         
     
     """
+    if colorspace.lower() is 'grey':
+        colorspace = 'gray'
     if len(image.shape) == 3:
         if colorspace.lower() != 'rgb':
-            image = getattr(color, "rgb2" + colorspace)(image)
-        image = img_split(image)[band]
+            image = getattr(color, 'rgb2' + colorspace)(image)
+        if len(image.shape) == 3:
+            image = img_split(image)[band]
     
     image = img_as_float(image)
     its = int((neighborhood_depth+2)/2)
