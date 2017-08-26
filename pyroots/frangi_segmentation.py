@@ -138,26 +138,41 @@ def frangi_segmentation(image,
         if not colors['dark_on_light'][i]:
             working_image[i] = 1 - working_image[i]
     
-    # Detect edges for separating objects
-    edges = [np.ones_like(i)] * nbands    # all True
-    if separate_objects:
-        for i in range(nbands):
-            edge_val = 1
-            sigma_val = 0.25
-            while edge_val > 0.1 and sigma_val < 10:
-                temp = filters.gaussian(working_image[i], sigma=sigma_val)
-                temp = filters.scharr(temp)
-                temp = temp < filters.threshold_otsu(temp)
-                edge_val = np.sum(temp) / np.sum(np.ones_like(temp))
-                sigma_val = 2*sigma_val
-            edges[i] = morphology.skeletonize(temp)
+    # Identify smoothing sigma for edges and frangi thresholding
+    # simultaneously detect edges (computationally cheaper than multiple frangi enhancements)
+    edges = [np.ones_like(working_image[0]) == 1] * nbands    # all True
+    sigma_val = [0.125] * nbands  # step is 0, 0.25, 0.5, 1, 2, 4, 8, 16
+    for i in range(nbands):
+        edge_val = 1
+        while edge_val > 0.1 and sigma_val[i] < 10:
+            sigma_val[i] = 2*sigma_val[i]
+            temp = filters.gaussian(working_image[i], sigma=sigma_val[i])
+            temp = filters.scharr(temp)
+            temp = temp > filters.threshold_otsu(temp)
+            edge_val = np.sum(temp) / np.sum(np.ones_like(temp))
 
-        if verbose:
+            edges_temp = temp.copy()
+
+        if sigma_val[i] == 0.25: # try without smoothing
+            temp = filters.scharr(working_image[i])
+            temp = temp > filters.threshold_otsu(temp)
+            edge_val = np.sum(temp) / np.sum(np.ones_like(temp))
+            if edge_val <= 0.1:
+                sigma_val[i] = 0
+                edges_temp = temp.copy()
+            
+        if separate_objects:
+            edges[i] = morphology.skeletonize(edges_temp)
+    
+    if verbose:
+        print("Sigma value: {}".format(sigma_val))
+        if separate_objects:
             print("Edges found")
     
     # Frangi vessel enhancement
     for i in range(nbands):
-        temp = filters.frangi(working_image[i], **frangi_args[i])
+        temp = filters.gaussian(working_image[i], sigma=sigma_val[i])
+        temp = filters.frangi(temp, **frangi_args[i])
         temp = 1 - temp/np.max(temp)
         temp = temp < filters.threshold_local(temp, **threshold_args[i])
         working_image[i] = temp.copy()
@@ -264,7 +279,7 @@ def frangi_segmentation(image,
     
     # Filter candidate objects by hollowness
     if hollow_args is not 'skip':  
-        working_image = morphology.remove_small_holes(working_image, min_size=10)
+        temp = morphology.remove_small_holes(working_image, min_size=10)
         try:
             if np.sum(temp) > 0:
                 working_image = hollow_filter(temp, **hollow_args)
