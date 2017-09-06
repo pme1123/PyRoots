@@ -848,9 +848,9 @@ def pyroots_batch_loop(dir_in,
                             print("Done: {}".format(subpath_in))
 
                             df_out = objects_dict['geometry']
-                            df_out.insert(0, "Time", strftime("%Y-%M-%d %H:%M:%S"))
+                            df_out.insert(0, "Time", strftime("%Y-%M-%d_%H:%M:%S"))
 
-                            df_out.to_csv(table_out, sep='\t', index=False, header=False, mode='a')
+                            df_out.to_csv(table_out, sep=',', index=False, header=False, mode='a')
 
                         except:
                             df_out = None
