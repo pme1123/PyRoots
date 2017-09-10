@@ -228,27 +228,53 @@ def register_bands(image, template_band=1, ECC_criterion=True):
     out = np.zeros((height, width, depth), dtype=np.uint8)
     out[:, :, template_band] = bands[template_band]
 
-    for i in analyze:
-        # Estimate transformation
-        warp_matrix = np.array(cv2.estimateRigidTransform(edges[template_band],
-                                                 edges[i],
-                                                 fullAffine=False), dtype=np.float32)
+    try:
+        for i in analyze:
+            # Estimate transformation
+            warp_matrix = np.array(cv2.estimateRigidTransform(edges[template_band],
+                                                     edges[i],
+                                                     fullAffine=False), dtype=np.float32)
 
-        if ECC_criterion == True:
-            # Optimize using ECC criterion and default settings
-            warp_matrix = cv2.findTransformECC(edges[template_band],
-                                               edges[i],
-                                               warpMatrix=warp_matrix)[1]
-        # transform
-        aligned = cv2.warpAffine(bands[i],
-                                 warp_matrix,
-                                 (width, height),
-                                 flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,  # otherwise the transformation goes the wrong way
-                                 borderMode=cv2.BORDER_CONSTANT)
+            if ECC_criterion == True:
+                # Optimize using ECC criterion and default settings
+                warp_matrix = cv2.findTransformECC(edges[template_band],
+                                                   edges[i],
+                                                   warpMatrix=warp_matrix)[1]
+            # transform
+            aligned = cv2.warpAffine(bands[i],
+                                     warp_matrix,
+                                     (width, height),
+                                     flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,  # otherwise the transformation goes the wrong way
+                                     borderMode=cv2.BORDER_CONSTANT)
 
-        # add to color image
-        out[:, :, i] = aligned
+            # add to color image
+            out[:, :, i] = aligned
+    
+    except:
+        # Probably few objects, so no smoothing and no thresholding to have as much info as possible
+        edges = [img_as_ubyte(filters.scharr(i)) for i in edges]
+        
+        for i in analyze:
+            # Estimate transformation
+            warp_matrix = np.array(cv2.estimateRigidTransform(edges[template_band],
+                                                     edges[i],
+                                                     fullAffine=False), dtype=np.float32)
 
+            if ECC_criterion == True:
+                # Optimize using ECC criterion and default settings
+                warp_matrix = cv2.findTransformECC(edges[template_band],
+                                                   edges[i],
+                                                   warpMatrix=warp_matrix)[1]
+            # transform
+            aligned = cv2.warpAffine(bands[i],
+                                     warp_matrix,
+                                     (width, height),
+                                     flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,  # otherwise the transformation goes the wrong way
+                                     borderMode=cv2.BORDER_CONSTANT)
+
+            # add to color image
+            out[:, :, i] = aligned
+            
     return(img_as_ubyte(out))
 
 
