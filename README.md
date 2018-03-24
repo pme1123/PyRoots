@@ -25,6 +25,11 @@ For photomicroscopy, you'll need:
 - A camera that can produce images of at least 300 PPI. Smartphones work in a pinch if you have an adapter and a camera app that gives you a lot of manual control. I used an older [spot](http://www.spotimaging.com/cameras/).
 - Lots of storage space
 
+For roots, you'll need:
+
+- Clear, non-distorting glass or plastic trays
+- A color scanner that can produce images of at least 300 PPI
+
 The included 'rapid' hyphae extraction method uses aniline blue, which doesn't require fluorescence.
 
 ## Overview
