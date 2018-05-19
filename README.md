@@ -27,6 +27,11 @@ For photomicroscopy, you'll need:
 
 The included 'rapid' hyphae extraction method uses aniline blue, which doesn't require fluorescence.
 
+For roots, you'll need:
+
+- Clear, non-distorting glass or plastic trays
+- A color scanner that can produce images of at least 300 PPI
+
 ## Overview
 
 Hyphae and root distribution are hugely important for driving belowground processes, but also a huge pain to quantify.
