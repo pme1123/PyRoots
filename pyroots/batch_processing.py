@@ -884,3 +884,127 @@ def pyroots_batch_loop(dir_in,
 
     out = pd.concat([i for i in out])
     return(out)
+    
+    
+#################################################################################################
+#################################################################################################
+#########                                                                           #############
+#########                           Batch Add Grid to Images                        #############
+#########                                                                           #############
+#################################################################################################
+#################################################################################################
+
+
+def fishnet_loop(dir_in,
+                 extension_in,
+                 dir_out='fishnet',
+                 extension_out=None,
+                 size=50,
+                 color=(200, 0, 0),
+                 weight=1,
+                 overwrite=False,
+                 cores=1):
+    """
+    Adds a fishnet of `size` * `size` pixels to each image of type `extension_in` in `dir_in`. 
+    Saves them to a folder `dir_out` in `dir_in` as type `extension_out` (defaults to same as
+    `extension_in`).
+
+    Parameters
+    ----------
+    dir_in : str
+        Directory to the images or subdirectories containing the images.
+    extension_in : str
+        Extension of images to analyze
+    dir_out : str
+        Name of directory to write output images. `None` or `""` to skip.
+    extension_out : str
+        Extension to save images.
+    size : int
+        Pixel length of one edge of the square mesh.
+    color : int
+        3 values specifying the color of the grid in 8-bit RGB space. Default is red.
+    weight : int
+        pixels wide of the lines. If is float, rounds down to int.
+    overwrite : bool
+        overwrite images if they exist? per the path specified by `dir_out` and `extension_out`
+    cores : int
+        For multiprocessing
+
+    Returns
+    -------
+    Saves image files
+
+    """
+
+    if extension_out is None:
+        extension_out = extension_in
+    if dir_out is None:
+        dir_out = ""
+    
+    # Count files to analyze for status bar, and make lists of directories
+    print("Counting images to screen...")
+    total_files = 0
+    subpaths = []
+    files_in = []
+    files_out = []
+    file_names = []
+    for path, folder, filename in os.walk(dir_in):
+        if dir_out not in path:
+            for f in filename:
+                if f.endswith(extension_in):
+                    total_files += 1  # index
+
+                    files_in.append(os.path.join(path, f))  # input files
+                    
+                    subpath = path[len(dir_in)+1 :]  # subpaths
+                    test_sub = sum([i == subpath for i in subpaths])
+                    if test_sub==0:
+                        subpaths.append(subpath)  # for making paths later on
+                    
+                    file_names.append(os.path.join(subpath, f)) # image names for a table later
+                    
+                    f_out = os.path.join(dir_in, dir_out, subpath, f)  # files out = dir_in/dir_out/subpath/image.ext
+                    files_out.append(f_out)
+                    
+    print("\nYou have {} images to analyze".format(total_files))
+    
+    if not os.path.exists(os.path.join(dir_in, dir_out)):
+        os.mkdir(os.path.join(dir_in, dir_out))
+        
+    for i in subpaths:
+        if not os.path.exists(os.path.join(dir_in, dir_out, i)):
+            os.mkdir(os.path.join(dir_in, dir_out, i))
+            
+    fout = os.path.join(dir_in, dir_out, 'fishnet_images.csv')
+    with open(fout, 'w') as file:
+        print("Image,GridSize_px,Crosses", file=file)
+        for i in file_names:
+            print("{},{},".format(i, size), file=file)
+    
+    global _core_fn
+    def _core_fn(ix):
+        image = io.imread(files_in[ix])
+
+        image = draw_fishnet(image, size=size, color=color, weight=weight)
+
+        if not os.path.exists(files_out[ix]):
+            io.imsave(files_out[ix],
+                      image)
+        elif overwrite:
+            io.imsave(files_out[ix], 
+                      image)
+
+        return
+    
+    sleep(2)  # to give everything time to  load
+    out = []  # for tqdm counting
+
+    with Pool(cores) as thread_pool:
+        out += tqdm(thread_pool.imap_unordered(_core_fn,
+                                               range(total_files),
+                                               chunksize=1),
+                    total=total_files)
+    
+    del globals()['_core_fn']
+
+    return('Done')
