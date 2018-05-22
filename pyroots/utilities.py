@@ -20,9 +20,11 @@ import os
 from multiprocessing.dummy import Pool
 import pyroots as pr
 from skimage import io, img_as_ubyte
-import tqdm
+from tqdm import tqdm
 from multiprocessing import Pool
 from time import sleep
+from shutil import copy2 # for file subsampler
+import random
 
 def _zoom(image, xmin, xmax, ymin, ymax, set_scale=False):
     """
@@ -380,3 +382,76 @@ def draw_fishnet(image_in,
     image = img_as_ubyte(image)
             
     return(image)
+    
+#####################################################
+#####################################################
+#######                                        ######
+#######             File Subsampler            ######
+#######                                        ######
+#####################################################
+#####################################################
+
+def file_subsampler(N,
+                    dir_in,
+                    extension_in,
+                    dir_out):
+    """
+    Subsamples files of type `extension_in` in `dir_in`. Copies them to a folder `dir_in/dir_out` as type `extension_out`
+    (defaults to same as `extension_in`).
+
+    Parameters
+    ----------
+    N : int
+        Number of files to select
+    dir_in : str
+        Full path to directory containing files.
+    extension_in : str
+        Extension of input files.
+    dir_out : str
+        Full path to directory to write output.
+        
+    Returns
+    -------
+    Saves image files
+
+    """
+    
+    # Count files to analyze for status bar, and make lists of directories
+    subpaths = []    # directories to make in dir_out
+    files_in = []    # input files
+    files_out = []   # output files
+    file_names = []  # names of output files, including subpaths
+    
+    for path, folder, filename in os.walk(dir_in):
+        if dir_out not in path:
+            for f in filename:
+                if f.endswith(extension_in):
+                    files_in.append(os.path.join(path, f))  # input files
+    
+    files_in = random.sample(files_in, N)
+
+
+    # identify folders to make in dir_out
+    for i in files_in:
+        subpath = os.path.dirname(i)[len(dir_in)+1 : ]
+        test_sub = sum([i == subpath for i in subpaths])
+        if test_sub==0:
+            subpaths.append(subpath)  # for making paths later on
+        
+    # identify file_names for the output
+    for i in files_in:
+        file = os.path.basename(i)
+        files_out.append(os.path.join(dir_out, subpath, file))
+    
+    # make output directories
+    if not os.path.exists(dir_out):
+        os.mkdir(dir_out) 
+    for i in subpaths:
+        if not os.path.exists(os.path.join(dir_out, i)):
+            os.mkdir(os.path.join(dir_out, i))
+
+    for i in tqdm(range(N)):
+        copy2(files_in[i],
+              files_out[i])
+
+    return('Done')
