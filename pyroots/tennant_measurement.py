@@ -15,6 +15,7 @@ Contents
 
 from scipy import ndimage
 import numpy as np
+from skimage import color, img_as_ubyte
 
 #####################################################
 #####################################################
