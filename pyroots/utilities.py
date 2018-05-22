@@ -310,7 +310,7 @@ def img_rescaler(dir_in, extension_in, threads=1):
 
 def draw_fishnet(image_in,
                  size=100,
-                 color = (200, 0, 0),
+                 grid_color = (200, 0, 0),
                  weight = 1):
 
     """
@@ -343,8 +343,8 @@ def draw_fishnet(image_in,
         msg = 'Image must be 1D or 3D'
         raise ValueError(msg)
         
-    if len(color) != 3:
-        msg = 'Color must be a 3-value list or tuple'
+    if len(grid_color) != 3:
+        msg = '`grid_Color` must be a 3-value list or tuple (give RGB values)'
         raise ValueError(msg)
     
     image = img_as_ubyte(image)
@@ -369,15 +369,15 @@ def draw_fishnet(image_in,
         y_vals += [j + i for j in y_vals]
         x_vals += [j + i for j in x_vals]
     
-    color = [int(i) for i in color]
+    grid_color = [int(i) for i in grid_color]
    
     for i in y_vals:
         for j in range(3):
-            image[i, :, j] = color[j]
+            image[i, :, j] = grid_color[j]
             
     for i in x_vals:
         for j in range(3):
-            image[:, i, j] = color[j] 
+            image[:, i, j] = grid_color[j] 
     
     image = img_as_ubyte(image)
             
@@ -437,11 +437,12 @@ def file_subsampler(N,
         test_sub = sum([i == subpath for i in subpaths])
         if test_sub==0:
             subpaths.append(subpath)  # for making paths later on
-        
+
     # identify file_names for the output
-    for i in files_in:
-        file = os.path.basename(i)
-        files_out.append(os.path.join(dir_out, subpath, file))
+        fname = os.path.basename(i)
+        files_out.append(os.path.join(dir_out, subpath, fname))
+
+        
     
     # make output directories
     if not os.path.exists(dir_out):

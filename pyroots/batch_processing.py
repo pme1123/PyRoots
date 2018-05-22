@@ -304,11 +304,11 @@ def preprocessing_actions_loop(dir_in,
                         if warnings == 0:  # save the manipulated image
                             if dir_out is not None:
                                 io.imsave(path_out_PASS, img_out)
-                            print("PASSED: {}".format(os.path.join(subpath, filename)))
+                            #print("PASSED: {}".format(os.path.join(subpath, filename)))
 
                         else:
                             if dir_out is not None:  # save a copy of the preprocessed image
-                                io.imsave(path_out_FAIL, img)
+                                io.imsave(path_out_FAIL, img_out)
                             print("Something Failed: {}".format(os.path.join(subpath, filename)))
 
                     return(True)  # for tqdm compatibility
@@ -321,7 +321,8 @@ def preprocessing_actions_loop(dir_in,
                             total=total_files)
             else:
                 sleep(2)  # to give everything time to  load
-                chunks = min(5, int(total_files/2*threads) + 1)
+                #chunks = min(5, int(total_files/2*threads) + 1)
+                chunks=1
                 thread_pool = Pool(threads)
                 # Work on _core_fn (and give progressbar)
                 out += tqdm(thread_pool.imap_unordered(_core_fn,
@@ -845,7 +846,7 @@ def pyroots_batch_loop(dir_in,
                                 io.imsave(path_out, img_as_ubyte(255*objects_dict['objects']))  # for black/white printing
 
                             #Update on progress
-                            print("Done: {}".format(subpath_in))
+                            #print("Done: {}".format(subpath_in))
 
                             df_out = objects_dict['geometry']
                             df_out.insert(0, "Time", strftime("%Y-%m-%d_%H:%M:%S"))
@@ -945,13 +946,13 @@ def fishnet_loop(dir_in,
         overwrite=True
         cont = input("Overwriting images in-place. Continue? [y, n]")
         if cont.lower() != 'y':
-            message('canceling')
+            print('canceling')
             return
     
     if extension_out is None:
         extension_out = extension_in
     if dir_out is None:
-        dir_out = ""
+        dir_out = dir_in
     
     # Count files to analyze for status bar, and make lists of directories
     print("Counting images to screen...")
@@ -961,7 +962,7 @@ def fishnet_loop(dir_in,
     files_out = []
     file_names = []
     for path, folder, filename in os.walk(dir_in):
-        if dir_out not in path or dir_out is "":
+        if dir_out not in path or dir_out is dir_in:
             for f in filename:
                 if f.endswith(extension_in):
                     total_files += 1  # index
@@ -975,7 +976,7 @@ def fishnet_loop(dir_in,
                     
                     file_names.append(os.path.join(subpath, f)) # image names for a table later
                     
-                    f_out = os.path.join(dir_in, dir_out, subpath, f)  # files out = dir_in/dir_out/subpath/image.ext
+                    f_out = os.path.join(dir_out, subpath, f)  # files out = dir_in/dir_out/subpath/image.ext
                     files_out.append(f_out)
                     
     print("\nYou have {} images to analyze".format(total_files))
@@ -997,7 +998,7 @@ def fishnet_loop(dir_in,
     def _core_fn(ix):
         image = io.imread(files_in[ix])
 
-        image = draw_fishnet(image, size=size, color=color, weight=weight)
+        image = draw_fishnet(image, size=size, grid_color=color, weight=weight)
 
         if not os.path.exists(files_out[ix]):
             io.imsave(files_out[ix],
