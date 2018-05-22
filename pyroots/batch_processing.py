@@ -903,6 +903,7 @@ def fishnet_loop(dir_in,
                  color=(200, 0, 0),
                  weight=1,
                  overwrite=False,
+                 in_place=False,
                  cores=1):
     """
     Adds a fishnet of `size` * `size` pixels to each image of type `extension_in` in `dir_in`. 
@@ -927,6 +928,9 @@ def fishnet_loop(dir_in,
         pixels wide of the lines. If is float, rounds down to int.
     overwrite : bool
         overwrite images if they exist? per the path specified by `dir_out` and `extension_out`
+    in_place : bool
+        do you want to update images in-place? If TRUE, then confirms and sets `dir_out` to 
+        `None` and `overwrite` to `True`.
     cores : int
         For multiprocessing
 
@@ -935,7 +939,15 @@ def fishnet_loop(dir_in,
     Saves image files
 
     """
-
+       
+    if in_place:
+        dir_out = None
+        overwrite=True
+        cont = input("Overwriting images in-place. Continue? [y, n]")
+        if cont.lower() != 'y':
+            message('canceling')
+            return
+    
     if extension_out is None:
         extension_out = extension_in
     if dir_out is None:
@@ -949,7 +961,7 @@ def fishnet_loop(dir_in,
     files_out = []
     file_names = []
     for path, folder, filename in os.walk(dir_in):
-        if dir_out not in path:
+        if dir_out not in path or dir_out is "":
             for f in filename:
                 if f.endswith(extension_in):
                     total_files += 1  # index
