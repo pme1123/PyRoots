@@ -5,10 +5,11 @@ from .summarize import summarize_geometry, bin_by_diameter
 from .skeletonization import _axis_length, skeleton_with_distance
 from .image_manipulation import img_split, draw_mask, equalize_exposure, _arrays_mean, _arrays_var, calc_exposure_correction, _center_image, fill_gaps, band_selector
 from .preprocessing import detect_motion_blur, calc_temperature_distance, correct_brightfield, register_bands, preprocessing_filters, preprocessing_actions
-from .utilities import multi_image_plot, random_blobs, tiff_splitter, band_viewer, _zoom, img_rescaler, draw_fishnet, file_subsampler
+from .utilities import multi_image_plot, random_blobs, tiff_splitter, band_viewer, _zoom, img_rescaler, file_subsampler
 from .thresholding_segmentation import thresholding_segmentation
 from .frangi_segmentation import frangi_segmentation
 from .batch_processing import preprocessing_filter_loop, preprocessing_actions_loop, frangi_image_loop, pyroots_batch_loop, fishnet_loop
+from .tennant_measurement import tennant_on_segmented, draw_fishnet
 
 
 __all__ = ['noise_removal', 'dirt_removal', 'grayscale_filter', 'color_filter', '_in_range',
@@ -18,7 +19,8 @@ __all__ = ['noise_removal', 'dirt_removal', 'grayscale_filter', 'color_filter', 
 	   	   '_axis_length', 'skeleton_with_distance',
 	   	   'img_split', 'draw_mask', 'equalize_exposure', '_arrays_mean', '_arrays_var', 'calc_exposure_correction', '_center_image', 'fill_gaps', 'band_selector',
 	   	   'detect_motion_blur', 'calc_temperature_distance', 'correct_brightfield', 'register_bands', 'preprocessing_filters', 'preprocessing_actions',
-	   	   'multi_image_plot', 'random_blobs', 'tiff_splitter', 'band_viewer', '_zoom', 'img_rescaler', 'draw_fishnet', 'file_subsampler',
+	   	   'multi_image_plot', 'random_blobs', 'tiff_splitter', 'band_viewer', '_zoom', 'img_rescaler', 'file_subsampler',
 	   	   'thresholding_segmentation',
 	   	   'preprocessing_filter_loop', 'preprocessing_actions_loop', 'frangi_image_loop', 'pyroots_batch_loop',
-	   	   'frangi_segmentation', 'fishnet_loop']
+	   	   'frangi_segmentation', 'fishnet_loop',
+	   	   'tennant_on_segmented', 'draw_fishnet']
