@@ -4,4 +4,6 @@
 /Example\ Images/*
 /Notebooks\ for\ Parameterization/*
 .gitignore
-
+/build
+/dist
+/pyroots.egg-info
