@@ -8,8 +8,9 @@ from .preprocessing import detect_motion_blur, calc_temperature_distance, correc
 from .utilities import multi_image_plot, random_blobs, tiff_splitter, band_viewer, _zoom, img_rescaler, file_subsampler
 from .thresholding_segmentation import thresholding_segmentation
 from .frangi_segmentation import frangi_segmentation
-from .batch_processing import preprocessing_filter_loop, preprocessing_actions_loop, frangi_image_loop, pyroots_batch_loop, fishnet_loop, tennant_batch
 from .tennant_measurement import tennant_on_segmented, draw_fishnet
+from .batch_processing import preprocessing_filter_loop, preprocessing_actions_loop, frangi_image_loop, pyroots_batch_loop, fishnet_loop, tennant_batch
+
 
 
 __all__ = ['noise_removal', 'dirt_removal', 'grayscale_filter', 'color_filter', '_in_range',
@@ -21,6 +22,6 @@ __all__ = ['noise_removal', 'dirt_removal', 'grayscale_filter', 'color_filter', 
 	   	   'detect_motion_blur', 'calc_temperature_distance', 'correct_brightfield', 'register_bands', 'preprocessing_filters', 'preprocessing_actions',
 	   	   'multi_image_plot', 'random_blobs', 'tiff_splitter', 'band_viewer', '_zoom', 'img_rescaler', 'file_subsampler',
 	   	   'thresholding_segmentation',
+	   	   'tennant_on_segmented', 'draw_fishnet',
 	   	   'preprocessing_filter_loop', 'preprocessing_actions_loop', 'frangi_image_loop', 'pyroots_batch_loop',
-	   	   'frangi_segmentation', 'fishnet_loop', 'tennant_batch', 
-	   	   'tennant_on_segmented', 'draw_fishnet']
+	   	   'frangi_segmentation', 'fishnet_loop', 'tennant_batch']
