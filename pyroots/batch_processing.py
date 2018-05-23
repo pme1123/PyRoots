@@ -680,12 +680,10 @@ def pyroots_batch_loop(dir_in,
             for i in dicts:  # report the parameters
                 try:         # if present in `params` file
                     print("{} = {}".format(i, str(globals()[i])))
-                    print("\n")
 
                 except:      # if not present in `params` file, must define as 'skip' to work
                     globals()[i] = 'skip'  # assign as 'skip'
                     print("{} = {}".format(i, str(globals()[i])))
-                    print("\n")
 
         except:
             if os.path.exists(params):
