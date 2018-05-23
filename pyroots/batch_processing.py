@@ -8,8 +8,6 @@ Batch processing functions:
 
 """
 
-#TODO: Test batch image loop with frangi method.
-
 import os
 import numpy as np
 from numpy import array, uint8
@@ -1042,7 +1040,7 @@ def tennant_batch(dir_in,
                   overwrite=False,
                   cores=1):
     """
-    Estimates the length of objects in binary images based on the tennant method. The directory
+    Estimates the length of objects in binary images based on the Tennant/line-intersect method. The directory
     and extension should point to binary images that are the outputs of frangi or thresholding 
     segmentation, as these methods return only objects that pass post-skeletonization filters
     like length:width filters. 
@@ -1062,6 +1060,22 @@ def tennant_batch(dir_in,
     -------
     Saves a spreadsheet with columns of file name, grid size (in px), crosses, and estimated length (in px) 
     to `table_out`. Also returns this as a pandas `DataFrame`.
+    
+    Notes
+    -----
+    The calculation for estimated pixel length is described in Tennant (1975):
+    
+    pixel length = 11/14 * grid_size * Ncrosses. 
+    
+    `pyroots.tennant_measurement.tennant_on_segmented()` calculates Ncrosses using square connectivity
+    (Manhattan distance = 1) on segmented, but not medial axis, images.
+    
+    See Also
+    --------
+    `pyroots.tennant_measurement.tennant_on_segmented()` for details of how crosses are counted.
+    
+    Tennant, D., 1975. A test of a modified line intersect method of estimating root length. The Journal 
+    of Ecology 63, 995. https://doi.org/10.2307/2258617
     
     """
     
