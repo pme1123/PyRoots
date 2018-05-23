@@ -1,7 +1,10 @@
 """
 Batch processing functions:
 - preprocessing_filter_loop
-- preprocessing_manipulation_loop
+- preprocessing_actions_loop
+- pyroots_batch_loop
+- fishnet_loop
+- tennant_batch
 
 """
 
@@ -1021,3 +1024,111 @@ def fishnet_loop(dir_in,
     del globals()['_core_fn']
 
     return('Done')
+    
+
+#################################################################################################
+#################################################################################################
+#########                                                                           #############
+#########                           Tennant Batch Measurement                       #############
+#########                                                                           #############
+#################################################################################################
+#################################################################################################
+
+
+def tennant_batch(dir_in,
+                  extension_in, 
+                  table_out,
+                  grid_size,
+                  overwrite=False,
+                  cores=1):
+    """
+    Estimates the length of objects in binary images based on the tennant method. The directory
+    and extension should point to binary images that are the outputs of frangi or thresholding 
+    segmentation, as these methods return only objects that pass post-skeletonization filters
+    like length:width filters. 
+    
+    Parameters
+    ----------
+    dir_in : str
+        Directory to the images or subdirectories containing the images.
+    extension_in : str
+        Extension of images to analyze
+    table_out : str
+        Directory and name of table to write output as. Returns comma-separated (.csv)
+    size : int
+        Size (in pixels) of the tenant grid.
+    
+    Returns
+    -------
+    Saves a spreadsheet with columns of file name, grid size (in px), crosses, and estimated length (in px) 
+    to `table_out`. Also returns this as a pandas `DataFrame`.
+    
+    """
+    
+    colnames = ['Image', 'GridSize_px', 'Crosses', 'Length_px']
+    ncol = 4
+    
+    if os.path.exists(table_out) and not overwrite:
+            df_out = pd.read_table(table_out, sep=",", nrows=1)
+            temp = df_out.columns.values
+            temp = sum(temp == colnames)
+            if temp != ncol:
+                raise ValueError("Table already exists, and is not compatible with\
+                                 the output of this function. Will not overwrite")
+    else:
+        df_out = pd.DataFrame(columns=colnames)
+        df_out.to_csv(table_out, sep=',', index=False, mode='w')
+
+    print("Counting images to screen...")
+    total_files = 0
+    subpaths = []
+    files_in = []
+    file_names = []
+    for path, folder, filename in os.walk(dir_in):
+        for f in filename:
+            if f.endswith(extension_in):
+                total_files += 1  # index
+
+                files_in.append(os.path.join(path, f))  # input files
+
+                subpath = path[len(dir_in)+1 :]  # subpaths
+                test_sub = sum([i == subpath for i in subpaths])
+                if test_sub==0:
+                    subpaths.append(subpath)  # for making paths later on
+
+                file_names.append(os.path.join(subpath, f)) # image names for a table later
+                    
+    print("\nYou have {} images to analyze".format(total_files))
+    
+#     for ix in tqdm(range(total_files)):
+    global _core_fn
+    def _core_fn(ix):
+        image = io.imread(files_in[ix])
+        
+        crosses = tennant_on_segmented(image, grid_size=grid_size)
+        tennant_length = (11/14)*grid_size*crosses
+        
+        temp_out = pd.DataFrame(data={'Image': [file_names[ix]],
+                                      'GridSize_px': [grid_size],
+                                      'Crosses': [crosses],
+                                      'Length_px': [tennant_length]
+                                     })
+        temp_out = temp_out[colnames]
+        temp_out.to_csv(table_out, sep=",", index=False, header=False, mode='a')
+        
+        return(temp_out)
+        
+    
+    sleep(0.5)  # to give everything time to  load
+    out = []  # for tqdm counting
+    with Pool(cores) as thread_pool:
+        out += tqdm(thread_pool.imap_unordered(_core_fn,
+                                               range(total_files),
+                                               chunksize=1),
+                    total=total_files)
+    
+    del globals()['_core_fn']
+    
+    df_out = pd.concat([i for i in out])
+
+    return(df_out)
