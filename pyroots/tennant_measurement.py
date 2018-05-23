@@ -1,5 +1,3 @@
-#! /bin/python3
-
 """
 Author: Patrick Ewing
 Date: May 23, 2018
@@ -17,20 +15,20 @@ from scipy import ndimage
 import numpy as np
 from skimage import color, img_as_ubyte
 
-#####################################################
-#####################################################
-#######                                        ######
-#######             File Subsampler            ######
-#######                                        ######
-#####################################################
-#####################################################
+#######################################################################
+#######################################################################
+#######                                                          ######
+#######             Tennant method on Segmented Image            ######
+#######                                                          ######
+#######################################################################
+#######################################################################
 
 def tennant_on_segmented(binary_image, grid_size):
     """
-    Estimates the length of objects in `binary_image` using the method of Tennant (1976),
+    Estimates the length of objects in `binary_image` using the method of Tennant (1975),
     the line-intercept method. The image should be the output of one of the segmentation
     methods, because those only inlcude objects that pass post-medial axis filtering like 
-    length:width filters.
+    length:width filters. 
     
     Parameters
     ----------
@@ -43,6 +41,19 @@ def tennant_on_segmented(binary_image, grid_size):
     -------
     The number of crosses (in pixels) = number of objects the intersection of the grid and
     the binary image.
+    
+    Notes
+    -----
+    This runs on the segmented image, not the medial axis image. Crosses are counted by
+    intersecting the segmented image with a grid, and then counting the number of objects
+    using square connectivity (manhattan distance = 1).
+    
+    See Also
+    --------
+    `pyroots.batch_processing.tennant_batch()`
+    
+    Tennant, D., 1975. A test of a modified line intersect method of estimating root length. The Journal 
+    of Ecology 63, 995. https://doi.org/10.2307/2258617
     """
     
     binary_image = binary_image > 0
@@ -76,7 +87,8 @@ def draw_fishnet(image_in,
 
     """
     Draw a square mesh grid over an image. The size of the grid is in pixels.
-    Color is a 3-value list giving RGB values.
+    Color is a 3-value list giving RGB values. Useful for manually measuring
+    length with the line-intersect method (Tennant, 1975).
 
     Parameters
     ----------
@@ -92,6 +104,11 @@ def draw_fishnet(image_in,
     Returns
     -------
     A 3D array - the image with the grid. 
+    
+    See also
+    --------    
+    Tennant, D., 1975. A test of a modified line intersect method of estimating root length. The Journal 
+    of Ecology 63, 995. https://doi.org/10.2307/2258617
     
     """
     image = image_in.copy()
