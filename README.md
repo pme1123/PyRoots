@@ -1,6 +1,8 @@
 
 # Pyroots: A Python module to quantify roots and hyphae in environmental samples.
 
+**jupyter notebooks almost ready. Message if you want them.**
+
 1. Requirements
 1. Overview
 2. Installation
