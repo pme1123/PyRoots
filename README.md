@@ -1,5 +1,7 @@
 
-# Pyroots: A Python module to quantify roots and hyphae in low-quality, noisy images.
+# Pyroots: A Python module to quantify roots and hyphae in environmental samples.
+
+**jupyter notebooks almost ready. Message if you want them.**
 
 1. Requirements
 1. Overview
@@ -108,14 +110,16 @@ This does the following:
 
 6. Run in batch mode on a larger subset of your images. 
 
-7. Inspect results. Tweak parameters as necessary. Repeat.
+7. Inspect results. Tweak parameters as necessary. Repeat. **UPDATE** A new function adds a fishnet grid to a set of images so you can manually estimate length using the line-intersect ("Tennant") method. 
 
 8. Run on all images.
 
-7. Analyze the output using the tools of your choice.
+7. Analyze the output table, which gives pixel lengths of each image by diameter class, using the tools of your choice.
 
 ## Output
 Pyroots will return the following:
 
 - A binary image showing the objects measured
-- A table summarizing the length and/or diameter of objects in each image. Units are PIXELS.
+- A table summarizing the length and/or diameter of objects in each image. Units are PIXELS. 
+
+To convert the output (px) to a more standard unit of length in microscopy images, just divide by the resolution. If you're analyzing photomicroscopy images, you'll also need the camera sensor size and magnification.
